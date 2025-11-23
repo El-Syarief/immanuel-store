@@ -23,6 +23,14 @@ return new class extends Migration
             // catat dua-duanya agar riwayatnya lengkap (Modal & Jual)
             $table->decimal('buy_price', 15, 2); // Harga Modal Baru
             $table->decimal('sell_price', 15, 2); // Harga Jual Baru
+
+            // Stok
+            $table->integer('old_stock')->nullable();
+            $table->integer('new_stock')->nullable();
+
+            // Market (Supplier) - TAMBAHAN BARU
+            $table->string('old_market')->nullable();
+            $table->string('new_market')->nullable();
             
             // Opsional: Alasan perubahan
             $table->string('reason')->nullable(); 

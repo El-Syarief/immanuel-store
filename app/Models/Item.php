@@ -11,7 +11,8 @@ class Item extends Model
 
     protected $fillable = [
         'code', 
-        'name', 
+        'name',
+        'market',
         'criteria', 
         'stock', 
         'buy_price', 
