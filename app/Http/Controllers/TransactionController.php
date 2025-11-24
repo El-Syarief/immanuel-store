@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
-use App\Models\ItemPriceHistory;
+use App\Models\History;
 use App\Models\User; // Import User
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TransactionsExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class TransactionController extends Controller
 {
@@ -17,43 +21,62 @@ class TransactionController extends Controller
     {
         $query = Transaction::with('user');
 
-        // 1. Filter Type
+        // 1. Filter Tipe (IN/OUT)
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
-        // 2. Filter Market
+        // 2. Filter Market (Dropdown)
         if ($request->filled('market')) {
-            $query->where('market', 'like', '%' . $request->market . '%');
+            $query->where('market', $request->market);
         }
 
-        // 3. Filter Kasir/User
+        // 3. Filter Kasir
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
-        // 4. Filter Tanggal
-        if ($request->filled('date_start')) {
-            $query->whereDate('transaction_date', '>=', $request->date_start);
-        }
-        if ($request->filled('date_end')) {
-            $query->whereDate('transaction_date', '<=', $request->date_end);
+        // 4. Filter Tanggal Spesifik (Pencarian Tanggal)
+        if ($request->filled('search_date')) {
+            $query->whereDate('transaction_date', $request->search_date);
         }
 
-        // 5. Pencarian No Invoice
+        // 5. Filter Bulan & Tahun
+        if ($request->filled('month')) {
+            $query->whereMonth('transaction_date', $request->month);
+        }
+        if ($request->filled('year')) {
+            $query->whereYear('transaction_date', $request->year);
+        }
+
+        // 6. Filter Rentang Waktu (Date Range)
+        if ($request->filled('date_start') && $request->filled('date_end')) {
+            $query->whereBetween('transaction_date', [$request->date_start, $request->date_end]);
+        }
+
+        // 7. Pencarian No Invoice
         if ($request->filled('search')) {
             $query->where('invoice_code', 'like', '%' . $request->search . '%');
         }
 
-        // 6. Sortir
-        $sortField = $request->input('sort_by', 'created_at');
-        $sortDir = $request->input('sort_dir', 'desc');
-        $query->orderBy($sortField, $sortDir);
+        // 8. Sortir (Default: Terbaru)
+        $sort = $request->input('sort', 'newest');
+        if ($sort == 'oldest') {
+            $query->orderBy('transaction_date', 'asc')->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('transaction_date', 'desc')->orderBy('created_at', 'desc');
+        }
 
         $transactions = $query->paginate(10)->withQueryString();
-        $users = User::all(); // Untuk dropdown filter kasir
+        
+        // Data Pendukung untuk Filter
+        $users = User::all();
+        $markets = Transaction::select('market')->distinct()->whereNotNull('market')->pluck('market');
+        
+        // Ambil tahun-tahun yang ada di transaksi untuk dropdown tahun
+        $years = Transaction::selectRaw('YEAR(transaction_date) as year')->distinct()->pluck('year');
 
-        return view('transactions.index', compact('transactions', 'users'));
+        return view('transactions.index', compact('transactions', 'users', 'markets', 'years'));
     }
 
     public function create()
@@ -72,6 +95,10 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'cashier' && $request->type === 'in') {
+            abort(403, 'AKSES DITOLAK: Kasir tidak diizinkan melakukan pembelian stok (Transaksi IN).');
+        }
+
         $request->validate([
             'invoice_code' => 'required|unique:transactions,invoice_code',
             'transaction_date' => 'required|date',
@@ -127,34 +154,58 @@ class TransactionController extends Controller
                         // 'price' => $cart['price'],
                         // 'subtotal' => $cart['subtotal'],
 
-                        'buy_price_snapshot' => $dbItem->buy_price,
-                        'sell_price_snapshot' => $dbItem->sell_price,
+                        // PERBAIKAN SNAPSHOT:
+                        // 1. Snapshot Harga Beli (Modal)
+                        // Jika ini transaksi IN (Update Stok), maka modalnya adalah harga baru ($finalPrice).
+                        // Jika transaksi OUT, modalnya tetap ambil dari database ($dbItem->buy_price).
+                        'buy_price_snapshot' => ($request->type == 'in') ? $finalPrice : $dbItem->buy_price,
+
+                        // 2. Snapshot Harga Jual
+                        // Biasanya harga jual standar (label) tidak berubah saat transaksi, jadi tetap ambil dari DB.
+                        // Tapi jika kamu ingin snapshotnya mengikuti harga deal juga, ubah $dbItem->sell_price jadi $finalPrice (hanya utk type 'out')
+                        // 'sell_price_snapshot' => $finalPrice,
+                        'sell_price_snapshot' => ($request->type == 'out') ? $finalPrice : $dbItem->sell_price,
                     ]);
 
-                    // --- LOGIKA STOK (PERBAIKAN BUG) ---
+                    // --- LOGIKA STOK (PERBAIKAN DOUBLE HISTORY) ---
                     if ($request->type === 'in') {
-                        // IN: Tambah Stok
-                        $dbItem->increment('stock', $cart['qty']);
+                        // IN: Tambah Stok & Update Data
+                        
+                        // 1. Siapkan alasan history
+                        request()->merge(['history_reason' => "Transaksi Masuk " . $transaction->invoice_code]);
 
-                        // Update Harga/Market jika perlu
-                        $updateData = [];
+                        // 2. Siapkan data yang mau diupdate (Stok PASTI update)
+                        $updateData = [
+                            'stock' => $dbItem->stock + $cart['qty'], // Hitung stok baru manual di sini
+                        ];
+
+                        // 3. Cek apakah Harga Modal berubah?
                         if ($cart['price'] > 0 && $cart['price'] != $dbItem->buy_price) {
                             $updateData['buy_price'] = $cart['price'];
                         }
+
+                        // 4. Cek apakah Market berubah?
                         if ($request->filled('market') && $request->market !== $dbItem->market) {
                             $updateData['market'] = $request->market;
                         }
 
-                        if (!empty($updateData)) {
-                            request()->merge(['history_reason' => "Transaksi Masuk " . $transaction->invoice_code]);
-                            $dbItem->update($updateData);
-                        }
+                        // 5. EKSEKUSI UPDATE (HANYA SEKALI)
+                        // Ini akan men-trigger Observer satu kali saja, mencatat perubahan stok & harga sekaligus.
+                        $dbItem->update($updateData);
 
                     } else {
-                        // OUT: Kurangi Stok
-                        // Gunakan query builder langsung agar lebih pasti
+                        // OUT: Kurangi Stok (FIX AGAR TERCATAT HISTORY)
+                        
+                        // 1. Siapkan alasan
+                        request()->merge(['history_reason' => "Transaksi Keluar " . $transaction->invoice_code]);
+
+                        // 2. Cek Stok
                         if ($dbItem->stock >= $cart['qty']) {
-                            Item::where('id', $cart['id'])->decrement('stock', $cart['qty']);
+                            
+                            // 3. Update pakai cara Model (Bukan Query Builder)
+                            $dbItem->stock = $dbItem->stock - $cart['qty'];
+                            $dbItem->save(); // <--- Fungsi save() ini yang memanggil Observer!
+                            
                         } else {
                             throw new \Exception("Stok barang {$dbItem->name} tidak cukup! Sisa: {$dbItem->stock}");
                         }
@@ -232,5 +283,32 @@ class TransactionController extends Controller
         ]);
 
         return redirect()->route('transactions.index')->with('success', 'Data transaksi berhasil diperbarui.');
+    }
+
+    public function exportExcel(Request $request)
+    {
+        if (auth()->user()->role !== 'admin') abort(403);
+        return Excel::download(new TransactionsExport($request), 'data-transaksi.xlsx');
+    }
+
+    public function exportPdf(Request $request)
+    {
+        if (auth()->user()->role !== 'admin') abort(403);
+
+        // $query = Transaction::with('user');
+        $query = Transaction::with(['user', 'details.item']);
+        
+        // Filter Tipe
+        if ($request->filled('type')) $query->where('type', $request->type);
+        // Filter Market
+        if ($request->filled('market')) $query->where('market', $request->market);
+        // Filter Tanggal
+        if ($request->filled('date_start') && $request->filled('date_end')) {
+            $query->whereBetween('transaction_date', [$request->date_start, $request->date_end]);
+        }
+
+        $transactions = $query->latest()->get();
+        $pdf = Pdf::loadView('exports.transactions_pdf', compact('transactions'));
+        return $pdf->download('laporan-transaksi-detail.pdf');
     }
 }

@@ -62,8 +62,8 @@ class User extends Authenticatable
     }
 
     // User (Admin) bisa punya banyak riwayat perubahan harga
-    public function priceHistories()
+    public function Histories()
     {
-        return $this->hasMany(ItemPriceHistory::class);
+        return $this->hasMany(History::class);
     }
 }

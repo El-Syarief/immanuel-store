@@ -36,8 +36,8 @@ class Item extends Model
     }
 
     // Item punya riwayat perubahan harga
-    public function priceHistories()
+    public function histories()
     {
-        return $this->hasMany(ItemPriceHistory::class);
+        return $this->hasMany(History::class);
     }
 }

@@ -40,7 +40,13 @@
                         <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
                             <tr>
                                 <th class="px-4 py-3 text-left">Barang</th>
-                                <th class="px-4 py-3 text-right">Harga Satuan</th>
+                                <th class="px-4 py-3 text-right">Harga Satuan (Deal)</th>
+                                
+                                <!-- <th class="px-4 py-3 text-right bg-yellow-50 text-yellow-800 border-l border-r border-yellow-100"> -->
+                                <th class="px-4 py-3 text-right">
+                                    {{ $transaction->type == 'in' ? 'Ref. Harga Jual' : 'Ref. Modal' }}
+                                </th>
+
                                 <th class="px-4 py-3 text-center">Qty</th>
                                 <th class="px-4 py-3 text-right">Subtotal</th>
                             </tr>
@@ -53,8 +59,35 @@
                                         <div class="text-xs text-gray-500">{{ $detail->item->code ?? '-' }}</div>
                                     </td>
                                     
-                                    <td class="px-4 py-3 text-right text-sm">
-                                        Rp {{ number_format($detail->price, 0, ',', '.') }}
+                                    <td class="px-4 py-3 text-right text-sm font-medium">
+                                        @php
+                                            $hargaDeal = $detail->price;
+                                            if ($hargaDeal <= 0) {
+                                                $hargaDeal = ($transaction->type == 'in') ? $detail->buy_price_snapshot : $detail->sell_price_snapshot;
+                                            }
+                                        @endphp
+                                        Rp {{ number_format($hargaDeal, 0, ',', '.') }}
+                                    </td>
+
+                                    <!-- <td class="px-4 py-3 text-right text-sm text-gray-500 bg-yellow-50 border-l border-r border-yellow-100"> -->
+                                    <td class="px-4 py-3 text-right text-sm font-medium">
+                                        @php
+                                            // Jika IN (Beli) -> Tampilkan Harga Jual saat itu
+                                            // Jika OUT (Jual) -> Tampilkan Harga Modal saat itu
+                                            $hargaAudit = ($transaction->type == 'in') ? $detail->sell_price_snapshot : $detail->buy_price_snapshot;
+                                            
+                                            // Hitung selisih (Profit/Margin)
+                                            $selisih = ($transaction->type == 'out') ? ($hargaDeal - $hargaAudit) : ($hargaAudit - $hargaDeal);
+                                            $persen = ($hargaAudit > 0) ? ($selisih / $hargaAudit) * 100 : 0;
+                                            $warnaSelisih = $selisih >= 0 ? 'text-green-600' : 'text-red-600';
+                                        @endphp
+                                        
+                                        <div>Rp {{ number_format($hargaAudit, 0, ',', '.') }}</div>
+                                        
+                                        <div class="text-xs {{ $warnaSelisih }} font-bold">
+                                            {{ $selisih >= 0 ? '+' : '' }}{{ number_format($selisih, 0, ',', '.') }} 
+                                            ({{ number_format($persen, 1) }}%)
+                                        </div>
                                     </td>
 
                                     <td class="px-4 py-3 text-center text-sm font-bold">{{ $detail->quantity }}</td>
@@ -67,7 +100,7 @@
                         </tbody>
                         <tfoot class="bg-gray-50">
                             <tr>
-                                <td colspan="3" class="px-4 py-4 text-right font-bold text-lg text-gray-600">TOTAL</td>
+                                <td colspan="4" class="px-4 py-4 text-right font-bold text-lg text-gray-600">TOTAL</td>
                                 <td class="px-4 py-4 text-right font-bold text-xl text-indigo-600">
                                     Rp {{ number_format($transaction->grand_total, 0, ',', '.') }}
                                 </td>

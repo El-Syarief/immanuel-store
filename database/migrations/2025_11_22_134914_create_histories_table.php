@@ -11,31 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('item_price_histories', function (Blueprint $table) {
+        Schema::create('histories', function (Blueprint $table) {
             $table->id();
-            
-            // Relasi ke Barang
             $table->foreignId('item_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained();
             
-            // Relasi ke Admin yang mengubah harga
-            $table->foreignId('user_id')->constrained(); 
+            // Harga (Lama & Baru)
+            $table->decimal('old_buy_price', 15, 2)->nullable(); // <--- BARU
+            $table->decimal('new_buy_price', 15, 2)->nullable(); // Ganti nama 'buy_price' biar konsisten
             
-            // catat dua-duanya agar riwayatnya lengkap (Modal & Jual)
-            $table->decimal('buy_price', 15, 2); // Harga Modal Baru
-            $table->decimal('sell_price', 15, 2); // Harga Jual Baru
-
+            $table->decimal('old_sell_price', 15, 2)->nullable(); // <--- BARU
+            $table->decimal('new_sell_price', 15, 2)->nullable(); // Ganti nama 'sell_price'
+            
             // Stok
             $table->integer('old_stock')->nullable();
             $table->integer('new_stock')->nullable();
 
-            // Market (Supplier) - TAMBAHAN BARU
+            // Market
             $table->string('old_market')->nullable();
             $table->string('new_market')->nullable();
-            
-            // Opsional: Alasan perubahan
-            $table->string('reason')->nullable(); 
-            
-            // created_at akan otomatis menjadi "Tanggal Perubahan"
+
+            $table->string('reason')->nullable();
             $table->timestamps();
         });
     }
@@ -45,6 +41,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('item_price_histories');
+        Schema::dropIfExists('histories');
     }
 };

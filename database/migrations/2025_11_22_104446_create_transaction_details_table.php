@@ -24,6 +24,8 @@ return new class extends Migration
             
             $table->integer('quantity');
 
+            // $table->decimal('price', 15, 2)->default(0);
+
             // Simpan dua harga untuk keperluan laporan
             // Jika tipe transaksi = 'out' (Jual), maka:
             // buy_price_snapshot = harga modal item saat itu

@@ -6,20 +6,30 @@ use Illuminate\Database\Eloquent\Model;
 
 class TransactionDetail extends Model
 {
-    protected $guarded = ['id'];
+    // OPSI 1 (Paling Praktis): Izinkan semua kolom KECUALI id
+    protected $guarded = ['id']; 
+
+    /* // OPSI 2 (Manual): Jika kamu tetap ingin pakai $fillable, 
+    // pastikan 'price' ada di sini:
+    protected $fillable = [
+        'transaction_id', 
+        'item_id', 
+        'quantity', 
+        'price',
+        'subtotal', 
+        'buy_price_snapshot', 
+        'sell_price_snapshot'
+    ]; 
+    */
 
     // --- RELASI ---
-
-    // Detail ini milik satu Transaksi (Header)
     public function transaction()
     {
         return $this->belongsTo(Transaction::class);
     }
 
-    // Detail ini merujuk ke satu Item
-    // Walaupun item di-soft delete, relasi ini tetap jalan (withTrashed otomatis diurus Laravel kalau mau, atau manual)
     public function item()
     {
-        return $this->belongsTo(Item::class)->withTrashed(); // Tambahkan withTrashed() agar bisa baca item yg sudah dihapus
+        return $this->belongsTo(Item::class)->withTrashed();
     }
 }
