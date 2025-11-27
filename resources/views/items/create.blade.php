@@ -5,6 +5,9 @@
         </h2>
     </x-slot>
 
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -26,10 +29,24 @@
                         </div>
 
                         <div class="mb-4">
-                            <x-input-label for="market" :value="__('Asal Barang / Supplier (Opsional)')" />
-                            <x-text-input id="market" class="block mt-1 w-full" type="text" name="market" :value="old('market')" placeholder="Contoh: Agen A, Tokopedia, dll" />
-                            <x-input-error :messages="$errors->get('market')" class="mt-2" />
+                            <x-input-label for="warehouses" :value="__('Akun (Bisa pilih banyak / ketik baru)')" />
+                            <select id="warehouses" name="warehouses[]" multiple placeholder="Pilih atau Ketik Akun Baru..." autocomplete="off">
+                                @foreach($warehouses as $warehouse)
+                                    <option value="{{ $warehouse->id }}" {{ in_array($warehouse->id, (array) old('warehouses', [])) ? 'selected' : '' }}>{{ $warehouse->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
+
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                new TomSelect("#warehouses", {
+                                    plugins: ['remove_button'], // Tombol X untuk hapus pilihan
+                                    create: true, // Bolehkan user mengetik nama baru
+                                    persist: false,
+                                    createOnBlur: true,
+                                });
+                            });
+                        </script>
 
                         <div class="mb-4">
                             <x-input-label for="criteria" :value="__('Kriteria (Opsional)')" />
@@ -46,13 +63,13 @@
                             </div>
                             
                             <div>
-                                <x-input-label for="buy_price" :value="__('Harga Modal (Rp)')" />
-                                <x-text-input id="buy_price" class="block mt-1 w-full" type="number" name="buy_price" :value="old('buy_price', 0)" required />
+                                <x-input-label for="buy_price" :value="__('Harga Modal ($)')" />
+                                <x-text-input id="buy_price" class="block mt-1 w-full" type="number" step="0.01" name="buy_price" :value="old('buy_price', 0)" required />
                             </div>
 
                             <div>
-                                <x-input-label for="sell_price" :value="__('Harga Jual (Rp)')" />
-                                <x-text-input id="sell_price" class="block mt-1 w-full" type="number" name="sell_price" :value="old('sell_price', 0)" required />
+                                <x-input-label for="sell_price" :value="__('Harga Jual ($)')" />
+                                <x-text-input id="sell_price" class="block mt-1 w-full" type="number" step="0.01" name="sell_price" :value="old('sell_price', 0)" required />
                             </div>
                         </div>
 

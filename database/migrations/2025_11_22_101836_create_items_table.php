@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique(); // Kode Barang
             $table->string('name');           // Nama Barang
-            $table->string('market')->nullable();
             $table->string('criteria')->nullable();           // Kriteria Barang
             $table->integer('stock')->default(0);
 

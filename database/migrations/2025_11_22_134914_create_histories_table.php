@@ -27,10 +27,6 @@ return new class extends Migration
             $table->integer('old_stock')->nullable();
             $table->integer('new_stock')->nullable();
 
-            // Market
-            $table->string('old_market')->nullable();
-            $table->string('new_market')->nullable();
-
             $table->string('reason')->nullable();
             $table->timestamps();
         });

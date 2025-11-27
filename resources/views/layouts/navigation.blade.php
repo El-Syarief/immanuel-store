@@ -21,7 +21,7 @@
                     </x-nav-link>
 
                     <x-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
-                        {{ __('Riwayat Transaksi') }}
+                        {{ __('Transaksi') }}
                     </x-nav-link>
                     
                     @if(auth()->user()->role === 'admin')
@@ -100,7 +100,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
-                {{ __('Riwayat Transaksi') }}
+                {{ __('Transaksi') }}
             </x-responsive-nav-link>
 
             @if(auth()->user()->role === 'admin')

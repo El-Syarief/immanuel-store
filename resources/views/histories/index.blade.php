@@ -104,18 +104,18 @@
                                         @if($history->old_buy_price != $history->new_buy_price)
                                             <div class="mb-1">
                                                 <span class="text-xs text-gray-500 font-bold uppercase">Modal:</span>
-                                                <span class="line-through text-gray-400 text-xs">{{ number_format($history->old_buy_price) }}</span>
+                                                <span class="line-through text-gray-400 text-xs">$ {{ number_format($history->old_buy_price, 2, '.', ',') }}</span>
                                                 <span class="text-gray-400 mx-1">&rarr;</span>
-                                                <span class="font-bold text-blue-600">{{ number_format($history->new_buy_price) }}</span>
+                                                <span class="font-bold text-blue-600">$ {{ number_format($history->new_buy_price, 2, '.', ',') }}</span>
                                             </div>
                                         @endif
 
                                         @if($history->old_sell_price != $history->new_sell_price)
                                             <div>
                                                 <span class="text-xs text-gray-500 font-bold uppercase">Jual:</span>
-                                                <span class="line-through text-gray-400 text-xs">{{ number_format($history->old_sell_price) }}</span>
+                                                <span class="line-through text-gray-400 text-xs">$ {{ number_format($history->old_sell_price, 2, '.', ',') }}</span>
                                                 <span class="text-gray-400 mx-1">&rarr;</span>
-                                                <span class="font-bold text-green-600">{{ number_format($history->new_sell_price) }}</span>
+                                                <span class="font-bold text-green-600">$ {{ number_format($history->new_sell_price, 2, '.', ',') }}</span>
                                             </div>
                                         @endif
 

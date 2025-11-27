@@ -22,6 +22,11 @@ class Transaction extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
     // Satu transaksi punya BANYAK detail barang
     public function details()
     {

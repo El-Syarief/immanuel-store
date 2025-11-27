@@ -17,13 +17,13 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
+            // Ganti validasi 'email' menjadi 'username'
+            'username' => [
+                'required', 
+                'string', 
+                'max:255', 
+                'alpha_dash', // Hanya boleh huruf, angka, strip, underscore (opsional)
+                \Illuminate\Validation\Rule::unique(User::class)->ignore($this->user()->id),
             ],
         ];
     }

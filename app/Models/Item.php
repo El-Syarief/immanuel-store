@@ -12,7 +12,7 @@ class Item extends Model
     protected $fillable = [
         'code', 
         'name',
-        'market',
+        // 'market',
         'criteria', 
         'stock', 
         'buy_price', 
@@ -39,5 +39,10 @@ class Item extends Model
     public function histories()
     {
         return $this->hasMany(History::class);
+    }
+
+    public function warehouses()
+    {
+        return $this->belongsToMany(Warehouse::class, 'item_warehouse');
     }
 }

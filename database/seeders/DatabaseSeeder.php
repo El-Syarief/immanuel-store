@@ -27,5 +27,11 @@ class DatabaseSeeder extends Seeder
             'role' => 'cashier',
             'username_verified_at' => now(),
         ]);
+
+        \App\Models\Warehouse::insert([
+            ['name' => 'tomfel018', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'yasaasliwoi', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'tomfel083', 'created_at' => now(), 'updated_at' => now()],
+        ]);
     }
 }

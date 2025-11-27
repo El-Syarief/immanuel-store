@@ -66,7 +66,7 @@
                                                 $hargaDeal = ($transaction->type == 'in') ? $detail->buy_price_snapshot : $detail->sell_price_snapshot;
                                             }
                                         @endphp
-                                        Rp {{ number_format($hargaDeal, 0, ',', '.') }}
+                                        $ {{ number_format($hargaDeal, 2, '.', ',') }}
                                     </td>
 
                                     <!-- <td class="px-4 py-3 text-right text-sm text-gray-500 bg-yellow-50 border-l border-r border-yellow-100"> -->
@@ -82,7 +82,7 @@
                                             $warnaSelisih = $selisih >= 0 ? 'text-green-600' : 'text-red-600';
                                         @endphp
                                         
-                                        <div>Rp {{ number_format($hargaAudit, 0, ',', '.') }}</div>
+                                        <div>$ {{ number_format($hargaAudit, 2, '.', ',') }}</div>
                                         
                                         <div class="text-xs {{ $warnaSelisih }} font-bold">
                                             {{ $selisih >= 0 ? '+' : '' }}{{ number_format($selisih, 0, ',', '.') }} 
@@ -93,7 +93,7 @@
                                     <td class="px-4 py-3 text-center text-sm font-bold">{{ $detail->quantity }}</td>
                                     
                                     <td class="px-4 py-3 text-right text-sm font-bold text-gray-900">
-                                        Rp {{ number_format($detail->subtotal, 0, ',', '.') }}
+                                        $ {{ number_format($detail->subtotal, 2, '.', ',') }}
                                     </td>
                                 </tr>
                             @endforeach
@@ -102,7 +102,7 @@
                             <tr>
                                 <td colspan="4" class="px-4 py-4 text-right font-bold text-lg text-gray-600">TOTAL</td>
                                 <td class="px-4 py-4 text-right font-bold text-xl text-indigo-600">
-                                    Rp {{ number_format($transaction->grand_total, 0, ',', '.') }}
+                                    $ {{ number_format($transaction->grand_total, 2, '.', ',') }}
                                 </td>
                             </tr>
                         </tfoot>

@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +17,28 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class ItemController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Helper: Proses input gudang (ID atau Nama Baru)
+     * Mengembalikan array ID gudang yang valid.
      */
+    private function processWarehouses($inputs)
+    {
+        if (!$inputs) return [];
+
+        $ids = [];
+        foreach ($inputs as $input) {
+            if (is_numeric($input)) {
+                // Jika angka, berarti ID gudang yang sudah ada
+                $ids[] = $input;
+            } else {
+                // Jika string, berarti nama gudang baru -> Buat dulu!
+                // firstOrCreate mencegah duplikat jika user mengetik nama yang sama
+                $new = Warehouse::firstOrCreate(['name' => $input]);
+                $ids[] = $new->id;
+            }
+        }
+        return $ids;
+    }
+
     private function authorizeAdmin()
     {
         if (auth()->user()->role !== 'admin') {
@@ -27,7 +48,7 @@ class ItemController extends Controller
 
     public function index(Request $request)
     {
-        $query = Item::query()->with('creator');
+        $query = Item::query()->with(['creator', 'warehouses']);
 
         // 1. Pencarian
         if ($request->filled('search')) {
@@ -48,9 +69,11 @@ class ItemController extends Controller
             $query->where('created_by', $request->creator_id);
         }
 
-        // 4. Filter Market
-        if ($request->filled('market')) {
-            $query->where('market', $request->market);
+        // 4. Filter Gudang
+        if ($request->filled('warehouse_id')) {
+            $query->whereHas('warehouses', function($q) use ($request) {
+                $q->where('warehouses.id', $request->warehouse_id);
+            });
         }
 
         // 5. Sortir
@@ -68,23 +91,18 @@ class ItemController extends Controller
 
         $creators = User::whereHas('createdItems')->get();
         $criterias = Item::select('criteria')->distinct()->whereNotNull('criteria')->pluck('criteria');
-        $markets = Item::select('market')->distinct()->whereNotNull('market')->pluck('market');
+        $warehouses = Warehouse::all(); 
 
-        return view('items.index', compact('items', 'creators', 'criterias', 'markets'));
+        return view('items.index', compact('items', 'creators', 'criterias', 'warehouses'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $this->authorizeAdmin();
-        return view('items.create');
+        $warehouses = Warehouse::all();
+        return view('items.create', compact('warehouses'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $this->authorizeAdmin();
@@ -95,12 +113,14 @@ class ItemController extends Controller
             'stock' => 'required|integer|min:0',
             'buy_price' => 'required|numeric|min:0',
             'sell_price' => 'required|numeric|min:0',
-            'market' => 'nullable|string|max:255',
+            
+            // PERBAIKAN VALIDASI:
+            // Hapus 'exists' agar user bisa input gudang baru (string)
+            'warehouses' => 'nullable|array',
+            'warehouses.*' => 'required', 
         ]);
 
         DB::transaction(function () use ($request) {
-            // 1. Simpan Item Baru
-            // Kita inject 'history_reason' agar Observer mencatat alasan yang spesifik
             request()->merge(['history_reason' => 'Input Barang Baru (Initial Stock)']);
             
             $item = Item::create([
@@ -110,21 +130,30 @@ class ItemController extends Controller
                 'stock' => $request->stock,
                 'buy_price' => $request->buy_price,
                 'sell_price' => $request->sell_price,
-                'market' => $request->market,
                 'description' => $request->description,
                 'created_by' => auth()->id(),
             ]);
 
-            // 2. SINKRONISASI TRANSAKSI (Jika ada stok awal)
+            // PROSES GUDANG (Pakai Helper yang baru dibuat)
+            if ($request->has('warehouses')) {
+                $warehouseIds = $this->processWarehouses($request->warehouses);
+                $item->warehouses()->attach($warehouseIds);
+            }
+
+            // SINKRONISASI TRANSAKSI (Jika ada stok awal)
             if ($item->stock > 0) {
-                // Buat Transaksi Otomatis (Tipe IN)
+                // Ambil gudang pertama untuk lokasi stok awal
+                $warehouseIds = $this->processWarehouses($request->warehouses ?? []);
+                $primaryWarehouseId = $warehouseIds[0] ?? null;
+
                 $trx = Transaction::create([
-                    'invoice_code' => 'SYS-INIT-' . time() . rand(100,999), // Kode Unik System
+                    'invoice_code' => 'SYS-INIT-' . time() . rand(100,999),
                     'user_id' => auth()->id(),
                     'type' => 'in',
-                    'market' => $item->market,
+                    'warehouse_id' => $primaryWarehouseId, 
+                    'market' => 'System Inventory (Awal)', // PERBAIKAN BUG: Jangan pakai $item->market (sudah dihapus)
                     'transaction_date' => now(),
-                    'grand_total' => $item->stock * $item->buy_price, // Nilai Aset
+                    'grand_total' => $item->stock * $item->buy_price,
                     'description' => 'Stok Awal Otomatis saat Input Barang Baru: ' . $item->name,
                 ]);
 
@@ -132,7 +161,7 @@ class ItemController extends Controller
                     'transaction_id' => $trx->id,
                     'item_id' => $item->id,
                     'quantity' => $item->stock,
-                    'price' => $item->buy_price, // Gunakan Harga Modal (Bukan Jual)
+                    'price' => $item->buy_price,
                     'subtotal' => $item->stock * $item->buy_price,
                     'buy_price_snapshot' => $item->buy_price,
                     'sell_price_snapshot' => $item->sell_price,
@@ -140,21 +169,25 @@ class ItemController extends Controller
             }
         });
 
-        return redirect()->route('items.index')->with('success', 'Barang berhasil ditambahkan & tercatat di transaksi!');
+        return redirect()->route('items.index')->with('success', 'Barang berhasil ditambahkan!');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    public function show(Item $item)
+    {
+        // Muat relasi agar kita bisa menampilkan nama pembuat & gudang
+        $item->load(['creator', 'warehouses']);
+        
+        return view('items.show', compact('item'));
+    }
+
     public function edit(Item $item)
     {
         $this->authorizeAdmin();
-        return view('items.edit', compact('item'));
+        $warehouses = Warehouse::all();
+        $item->load('warehouses');
+        return view('items.edit', compact('item', 'warehouses'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Item $item)
     {
         $this->authorizeAdmin();
@@ -165,7 +198,8 @@ class ItemController extends Controller
             'stock' => 'required|integer|min:0',
             'buy_price' => 'required|numeric|min:0',
             'sell_price' => 'required|numeric|min:0',
-            'market' => 'nullable|string|max:255',
+            'warehouses' => 'nullable|array',
+            'warehouses.*' => 'required',
         ]);
 
         DB::transaction(function () use ($request, $item) {
@@ -173,8 +207,6 @@ class ItemController extends Controller
             $newStock = $request->stock;
             $diff = $newStock - $oldStock;
 
-            // 1. Update Item
-            // Inject reason agar Observer mencatat ini edit manual
             request()->merge(['history_reason' => 'Edit Manual via Menu Items']);
             
             $item->update([
@@ -184,28 +216,36 @@ class ItemController extends Controller
                 'stock' => $newStock,
                 'buy_price' => $request->buy_price,
                 'sell_price' => $request->sell_price,
-                'market' => $request->market,
                 'description' => $request->description,
             ]);
 
-            // 2. SINKRONISASI TRANSAKSI (Jika Stok Berubah)
+            // UPDATE GUDANG (Pakai Helper)
+            if ($request->has('warehouses')) {
+                $warehouseIds = $this->processWarehouses($request->warehouses);
+                $item->warehouses()->sync($warehouseIds);
+            } else {
+                $item->warehouses()->detach();
+            }
+
+            // SINKRONISASI TRANSAKSI KOREKSI
             if ($diff != 0) {
                 $type = $diff > 0 ? 'in' : 'out';
                 $qty = abs($diff);
-                
-                // Kita gunakan Harga Modal (buy_price) untuk nilai koreksi
-                // Agar tidak dianggap Profit/Untung, melainkan Penyesuaian Aset saja.
                 $price = $item->buy_price; 
                 $subtotal = $qty * $price;
 
+                // Ambil gudang pertama dari relasi terbaru
+                $warehouseId = $item->warehouses->first()->id ?? null;
+
                 $trx = Transaction::create([
-                    'invoice_code' => 'SYS-ADJ-' . time() . rand(100,999), // Kode System Adjustment
+                    'invoice_code' => 'SYS-ADJ-' . time() . rand(100,999),
                     'user_id' => auth()->id(),
                     'type' => $type,
-                    'market' => $item->market, 
+                    'warehouse_id' => $warehouseId,
+                    'market' => 'System Correction',
                     'transaction_date' => now(),
                     'grand_total' => $subtotal,
-                    'description' => 'Koreksi Stok Manual (Edit Item): ' . ($diff > 0 ? "Penambahan $qty" : "Pengurangan $qty"),
+                    'description' => 'Koreksi Stok Manual: ' . ($diff > 0 ? "+$qty" : "-$qty"),
                 ]);
 
                 TransactionDetail::create([
@@ -220,34 +260,29 @@ class ItemController extends Controller
             }
         });
 
-        return redirect()->route('items.index')->with('success', 'Barang berhasil diperbarui & stok disinkronkan!');
+        return redirect()->route('items.index')->with('success', 'Barang diperbarui!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Item $item)
     {
         $this->authorizeAdmin();
-
         $item->delete();
         return redirect()->route('items.index')->with('success', 'Barang berhasil dihapus!');
     }
 
-    // --- FITUR EXPORT ---
-    
     public function exportExcel(Request $request)
     {
         $this->authorizeAdmin();
-
         return Excel::download(new ItemsExport($request), 'data-barang.xlsx');
     }
 
     public function exportPdf(Request $request)
     {
         $this->authorizeAdmin();
-
-        $query = Item::query()->with('creator');
+        
+        // Update query export agar support filter gudang
+        $query = Item::query()->with(['creator', 'warehouses']);
+        
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -257,7 +292,12 @@ class ItemController extends Controller
         }
         if ($request->filled('criteria')) $query->where('criteria', $request->criteria);
         if ($request->filled('creator_id')) $query->where('created_by', $request->creator_id);
-        if ($request->filled('market')) $query->where('market', $request->market);
+        
+        if ($request->filled('warehouse_id')) {
+            $query->whereHas('warehouses', function($q) use ($request) {
+                $q->where('warehouses.id', $request->warehouse_id);
+            });
+        }
         
         $items = $query->get();
         $pdf = Pdf::loadView('exports.items_pdf', compact('items'));

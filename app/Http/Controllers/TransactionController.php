@@ -19,72 +19,99 @@ class TransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Transaction::with('user');
+        $isSearchItemMode = false;
+        $transactions = null;
+        $transactionDetails = null;
 
-        // 1. Filter Tipe (IN/OUT)
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
+        // Ambil parameter sortir (Default: Date Descending)
+        $sort = $request->input('sort', 'date-desc');
+
+        // 1. LOGIKA PENCARIAN (Keyword Terisi)
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            // SKENARIO A: Cari Nama Barang Dulu (PRIORITAS UTAMA)
+            $detailQuery = TransactionDetail::with(['transaction.user', 'item'])
+                ->whereHas('item', function($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('code', 'like', '%' . $search . '%'); // Tambahkan cari kode barang juga biar makin mantap
+                });
+            
+            // Terapkan Filter Tambahan ke Induk Transaksi agar pengecekan exists() akurat
+            $detailQuery->whereHas('transaction', function($q) use ($request) {
+                if ($request->filled('type')) $q->where('type', $request->type);
+                if ($request->filled('market')) $q->where('market', $request->market);
+                if ($request->filled('user_id')) $q->where('user_id', $request->user_id);
+                if ($request->filled('date_start') && $request->filled('date_end')) {
+                    $q->whereBetween('transaction_date', [$request->date_start, $request->date_end]);
+                }
+            });
+
+            // Jika ditemukan Barang yang cocok...
+            if ($detailQuery->exists()) {
+                // MODE DETAIL (BARANG)
+                
+                // Sortir Mode Detail
+                if ($sort == 'date-desc') $detailQuery->orderBy('created_at', 'desc');
+                if ($sort == 'date-asc') $detailQuery->orderBy('created_at', 'asc');
+                if ($sort == 'updated-desc') $detailQuery->orderBy('updated_at', 'desc');
+                if ($sort == 'updated-asc') $detailQuery->orderBy('updated_at', 'asc');
+                // Sortir Invoice di mode barang agak tricky, kita skip atau default ke date dulu
+
+                $transactionDetails = $detailQuery->paginate(15)->withQueryString();
+                $isSearchItemMode = true;
+            } 
+            
+            // SKENARIO B: Jika Barang Tidak Ketemu, Cari Invoice Code
+            else {
+                $trxQuery = Transaction::with('user')
+                    ->where('invoice_code', 'like', '%' . $search . '%');
+                
+                // MODE NORMAL (INVOICE)
+                $transactions = $this->applyFilters($trxQuery, $request, $sort)->paginate(10)->withQueryString();
+            }
+        } 
+        
+        // 2. LOGIKA TANPA PENCARIAN (Hanya Filter / Kosong)
+        else {
+            $query = Transaction::with('user');
+            $transactions = $this->applyFilters($query, $request, $sort)->paginate(10)->withQueryString();
         }
 
-        // 2. Filter Market (Dropdown)
-        if ($request->filled('market')) {
-            $query->where('market', $request->market);
-        }
+        // Data Pendukung untuk Dropdown Filter
+        $users = User::all();
+        $markets = Transaction::select('market')->distinct()->whereNotNull('market')->pluck('market');
 
-        // 3. Filter Kasir
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
+        return view('transactions.index', compact('transactions', 'transactionDetails', 'isSearchItemMode', 'users', 'markets'));
+    }
 
-        // 4. Filter Tanggal Spesifik (Pencarian Tanggal)
-        if ($request->filled('search_date')) {
-            $query->whereDate('transaction_date', $request->search_date);
-        }
-
-        // 5. Filter Bulan & Tahun
-        if ($request->filled('month')) {
-            $query->whereMonth('transaction_date', $request->month);
-        }
-        if ($request->filled('year')) {
-            $query->whereYear('transaction_date', $request->year);
-        }
-
-        // 6. Filter Rentang Waktu (Date Range)
+    // Helper untuk filter standar (biar rapi)
+    private function applyFilters($query, $request, $sort = null)
+    {
+        if ($request->filled('type')) $query->where('type', $request->type);
+        if ($request->filled('market')) $query->where('market', $request->market);
+        if ($request->filled('user_id')) $query->where('user_id', $request->user_id);
+        
         if ($request->filled('date_start') && $request->filled('date_end')) {
             $query->whereBetween('transaction_date', [$request->date_start, $request->date_end]);
         }
 
-        // 7. Pencarian No Invoice
-        if ($request->filled('search')) {
-            $query->where('invoice_code', 'like', '%' . $request->search . '%');
-        }
-
-        // 8. Sortir (Default: Terbaru)
-        $sort = $request->input('sort', 'newest');
+        // Sortir
+        $sort = $sort ?? $request->input('sort', 'newest');
         if ($sort == 'oldest') {
             $query->orderBy('transaction_date', 'asc')->orderBy('created_at', 'asc');
         } else {
             $query->orderBy('transaction_date', 'desc')->orderBy('created_at', 'desc');
         }
 
-        $transactions = $query->paginate(10)->withQueryString();
-        
-        // Data Pendukung untuk Filter
-        $users = User::all();
-        $markets = Transaction::select('market')->distinct()->whereNotNull('market')->pluck('market');
-        
-        // Ambil tahun-tahun yang ada di transaksi untuk dropdown tahun
-        $years = Transaction::selectRaw('YEAR(transaction_date) as year')->distinct()->pluck('year');
-
-        return view('transactions.index', compact('transactions', 'users', 'markets', 'years'));
+        return $query;
     }
 
     public function create()
     {
         $items = Item::orderBy('name')->get();
+        $warehouses = \App\Models\Warehouse::all(); // <--- Ambil Data Gudang
         
-        // Kita hanya kirim Sequence Number (Urutan) ke View
-        // Nanti Javascript yang akan merangkai jadi "INV-IN-..." atau "INV-OUT-..."
         $todayPrefix = date('Ymd');
         $lastTransaction = Transaction::whereDate('created_at', today())->latest()->first();
         $nextSeq = $lastTransaction ? ((int)substr($lastTransaction->invoice_code, -4) + 1) : 1;
@@ -103,33 +130,25 @@ class TransactionController extends Controller
             'invoice_code' => 'required|unique:transactions,invoice_code',
             'transaction_date' => 'required|date',
             'type' => 'required|in:in,out',
+            // 'warehouse_id' => 'required|exists:warehouses,id',
             'cart_items' => 'required|json',
+            'market' => $request->type == 'out' ? 'required|string' : 'nullable',
         ]);
 
         $cartItems = json_decode($request->cart_items, true);
-
-        if (empty($cartItems)) {
-            return back()->withErrors(['error' => 'Keranjang belanja kosong!']);
-        }
+        if (empty($cartItems)) return back()->withErrors(['error' => 'Keranjang belanja kosong!']);
 
         try {
             DB::transaction(function () use ($request, $cartItems) {
-                
                 $grandTotal = 0;
-                foreach ($cartItems as $item) {
-                    $grandTotal += $item['subtotal'];
-                }
-
-                // Format Invoice Ulang (Backend Validation) agar konsisten
-                // Format: INV-{TYPE}-{DATE}-{SEQ} -> INV-OUT-20251123-0001
-                // Kita percaya input invoice_code dari frontend, tapi idealnya digenerate ulang di sini untuk keamanan.
-                // Untuk sekarang kita pakai input dari request saja agar sesuai tampilan.
+                foreach ($cartItems as $item) $grandTotal += $item['subtotal'];
 
                 $transaction = Transaction::create([
                     'invoice_code' => $request->invoice_code,
                     'user_id' => Auth::id(),
+                    // 'warehouse_id' => $request->warehouse_id,
                     'type' => $request->type,
-                    'market' => $request->market,
+                    'market' => $request->type == 'out' ? $request->market : null, // <--- Market hanya untuk OUT
                     'transaction_date' => $request->transaction_date,
                     'grand_total' => $grandTotal,
                     'description' => $request->description,
@@ -139,82 +158,44 @@ class TransactionController extends Controller
                     $dbItem = Item::find($cart['id']);
                     if (!$dbItem) continue;
 
-                    $finalPrice = ($cart['price'] > 0) 
-                        ? $cart['price'] 
-                        : ($request->type == 'in' ? $dbItem->buy_price : $dbItem->sell_price);
+                    $finalPrice = ($cart['price'] > 0) ? $cart['price'] : ($request->type == 'in' ? $dbItem->buy_price : $dbItem->sell_price);
 
                     TransactionDetail::create([
                         'transaction_id' => $transaction->id,
                         'item_id' => $cart['id'],
                         'quantity' => $cart['qty'],
-
-                        'price' => $finalPrice, // <--- Pakai harga yang sudah diamankan
-                        'subtotal' => $cart['qty'] * $finalPrice, // Hitung ulang subtotal biar akurat
-
-                        // 'price' => $cart['price'],
-                        // 'subtotal' => $cart['subtotal'],
-
-                        // PERBAIKAN SNAPSHOT:
-                        // 1. Snapshot Harga Beli (Modal)
-                        // Jika ini transaksi IN (Update Stok), maka modalnya adalah harga baru ($finalPrice).
-                        // Jika transaksi OUT, modalnya tetap ambil dari database ($dbItem->buy_price).
+                        'price' => $finalPrice,
+                        'subtotal' => $cart['qty'] * $finalPrice,
                         'buy_price_snapshot' => ($request->type == 'in') ? $finalPrice : $dbItem->buy_price,
-
-                        // 2. Snapshot Harga Jual
-                        // Biasanya harga jual standar (label) tidak berubah saat transaksi, jadi tetap ambil dari DB.
-                        // Tapi jika kamu ingin snapshotnya mengikuti harga deal juga, ubah $dbItem->sell_price jadi $finalPrice (hanya utk type 'out')
-                        // 'sell_price_snapshot' => $finalPrice,
                         'sell_price_snapshot' => ($request->type == 'out') ? $finalPrice : $dbItem->sell_price,
                     ]);
 
-                    // --- LOGIKA STOK (PERBAIKAN DOUBLE HISTORY) ---
                     if ($request->type === 'in') {
-                        // IN: Tambah Stok & Update Data
-                        
-                        // 1. Siapkan alasan history
                         request()->merge(['history_reason' => "Transaksi Masuk " . $transaction->invoice_code]);
+                        
+                        // Update Stok Global
+                        $updateData = ['stock' => $dbItem->stock + $cart['qty']];
+                        if ($cart['price'] > 0 && $cart['price'] != $dbItem->buy_price) $updateData['buy_price'] = $cart['price'];
+                        
+                        // SINKRONISASI GUDANG (Pivot)
+                        // Jika barang masuk ke gudang ini, pastikan relasinya tercatat di pivot
+                        // syncWithoutDetaching = Tambahkan gudang ini ke daftar lokasi barang (kalau belum ada)
+                        // $dbItem->warehouses()->syncWithoutDetaching([$request->warehouse_id]);
 
-                        // 2. Siapkan data yang mau diupdate (Stok PASTI update)
-                        $updateData = [
-                            'stock' => $dbItem->stock + $cart['qty'], // Hitung stok baru manual di sini
-                        ];
-
-                        // 3. Cek apakah Harga Modal berubah?
-                        if ($cart['price'] > 0 && $cart['price'] != $dbItem->buy_price) {
-                            $updateData['buy_price'] = $cart['price'];
-                        }
-
-                        // 4. Cek apakah Market berubah?
-                        if ($request->filled('market') && $request->market !== $dbItem->market) {
-                            $updateData['market'] = $request->market;
-                        }
-
-                        // 5. EKSEKUSI UPDATE (HANYA SEKALI)
-                        // Ini akan men-trigger Observer satu kali saja, mencatat perubahan stok & harga sekaligus.
                         $dbItem->update($updateData);
 
                     } else {
-                        // OUT: Kurangi Stok (FIX AGAR TERCATAT HISTORY)
-                        
-                        // 1. Siapkan alasan
                         request()->merge(['history_reason' => "Transaksi Keluar " . $transaction->invoice_code]);
-
-                        // 2. Cek Stok
                         if ($dbItem->stock >= $cart['qty']) {
-                            
-                            // 3. Update pakai cara Model (Bukan Query Builder)
                             $dbItem->stock = $dbItem->stock - $cart['qty'];
-                            $dbItem->save(); // <--- Fungsi save() ini yang memanggil Observer!
-                            
+                            $dbItem->save();
                         } else {
                             throw new \Exception("Stok barang {$dbItem->name} tidak cukup! Sisa: {$dbItem->stock}");
                         }
                     }
                 }
             });
-
             return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil disimpan!');
-
         } catch (\Exception $e) {
             return back()->withInput()->withErrors(['error' => 'Gagal: ' . $e->getMessage()]);
         }

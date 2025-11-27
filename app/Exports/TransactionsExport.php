@@ -6,9 +6,14 @@ use App\Models\TransactionDetail;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting; // <--- TAMBAHAN
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;     // <--- TAMBAHAN
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Illuminate\Database\Eloquent\Builder;
 
-class TransactionsExport implements FromQuery, WithHeadings, WithMapping
+class TransactionsExport implements FromQuery, WithHeadings, WithMapping, WithColumnFormatting, ShouldAutoSize, WithStyles
 {
     protected $request;
 
@@ -19,32 +24,17 @@ class TransactionsExport implements FromQuery, WithHeadings, WithMapping
 
     public function query()
     {
-        // Ambil Detail Transaksi, join dengan Header Transaksi & Item
-        $query = TransactionDetail::query()
-            ->with(['transaction.user', 'item']);
+        $query = TransactionDetail::query()->with(['transaction.user', 'item']);
 
-        // Filter berdasarkan Header Transaksi
-        // Kita pakai whereHas untuk memfilter berdasarkan induknya (Transaction)
         $query->whereHas('transaction', function (Builder $q) {
-            // Filter Tipe
-            if ($this->request->filled('type')) {
-                $q->where('type', $this->request->type);
-            }
-            // Filter Market
-            if ($this->request->filled('market')) {
-                $q->where('market', $this->request->market);
-            }
-            // Filter User/Kasir
-            if ($this->request->filled('user_id')) {
-                $q->where('user_id', $this->request->user_id);
-            }
-            // Filter Rentang Tanggal
+            if ($this->request->filled('type')) $q->where('type', $this->request->type);
+            if ($this->request->filled('market')) $q->where('market', $this->request->market);
+            if ($this->request->filled('user_id')) $q->where('user_id', $this->request->user_id);
             if ($this->request->filled('date_start') && $this->request->filled('date_end')) {
                 $q->whereBetween('transaction_date', [$this->request->date_start, $this->request->date_end]);
             }
         });
 
-        // Urutkan berdasarkan tanggal transaksi terbaru
         return $query->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
                      ->orderBy('transactions.transaction_date', 'desc')
                      ->select('transaction_details.*');
@@ -59,18 +49,17 @@ class TransactionsExport implements FromQuery, WithHeadings, WithMapping
             'Market', 
             'Kasir', 
             'Nama Barang', 
-            'Harga Transaksi', // Harga Deal (Beli/Jual)
-            'Harga Audit',     // Kolom Baru (Modal/Jual)
+            'Harga Transaksi', // Kolom G
+            'Harga Audit',     // Kolom H
             'Qty', 
-            'Subtotal Barang',
-            'Total Invoice',
-            'Deskripsi'
+            'Subtotal Barang', // Kolom J
+            'Total Invoice',    // Kolom K
+            'Catatan'
         ];
     }
 
     public function map($detail): array
     {
-        // LOGIKA HARGA UTAMA (Deal Price)
         $hargaTransaksi = $detail->price;
         if ($hargaTransaksi <= 0) {
             $hargaTransaksi = ($detail->transaction->type == 'in') 
@@ -78,9 +67,6 @@ class TransactionsExport implements FromQuery, WithHeadings, WithMapping
                 : $detail->sell_price_snapshot;
         }
 
-        // LOGIKA HARGA AUDIT (Pembanding)
-        // Jika IN (Beli) -> Tampilkan Harga Jual saat itu (untuk cek margin potensial)
-        // Jika OUT (Jual) -> Tampilkan Harga Modal saat itu (untuk cek profit)
         $hargaAudit = ($detail->transaction->type == 'in') 
             ? $detail->sell_price_snapshot 
             : $detail->buy_price_snapshot;
@@ -93,13 +79,27 @@ class TransactionsExport implements FromQuery, WithHeadings, WithMapping
             $detail->transaction->user->name,
             $detail->item->name ?? 'Item Terhapus',
             
-            $hargaTransaksi, // Harga Deal
-            $hargaAudit,     // Harga Pembanding (Modal/Jual)
-            
+            (float) $hargaTransaksi, // Kirim Angka Mentah (Float)
+            (float) $hargaAudit,     // Kirim Angka Mentah
             $detail->quantity,
-            $detail->subtotal,
-            $detail->transaction->grand_total,
+            (float) $detail->subtotal,      // Kirim Angka Mentah
+            (float) $detail->transaction->grand_total, // Kirim Angka Mentah
             $detail->transaction->description,
         ];
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'G' => NumberFormat::FORMAT_ACCOUNTING_USD, // Harga Transaksi
+            'H' => NumberFormat::FORMAT_ACCOUNTING_USD, // Harga Audit
+            'J' => NumberFormat::FORMAT_ACCOUNTING_USD, // Subtotal
+            'K' => NumberFormat::FORMAT_ACCOUNTING_USD, // Total Invoice
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        return [ 1 => ['font' => ['bold' => true]] ];
     }
 }

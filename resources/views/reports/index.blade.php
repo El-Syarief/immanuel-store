@@ -45,19 +45,19 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
                     <p class="text-xs font-bold text-gray-500 uppercase">Total Omzet</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-2">Rp {{ number_format($omzet, 0, ',', '.') }}</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-2">$ {{ number_format($omzet, 2, '.', ',') }}</p>
                     <p class="text-xs text-gray-400 mt-1">Pemasukan Kotor</p>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 {{ $profit >= 0 ? 'border-green-500' : 'border-red-500' }}">
                     <p class="text-xs font-bold text-gray-500 uppercase">Laba Bersih (Profit)</p>
                     <p class="text-2xl font-bold {{ $profit >= 0 ? 'text-green-600' : 'text-red-600' }} mt-2">
-                        Rp {{ number_format($profit, 0, ',', '.') }}
+                        $ {{ number_format($profit, 2, '.', ',') }}
                     </p>
                     <p class="text-xs text-gray-400 mt-1">Omzet - Modal (HPP)</p>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
                     <p class="text-xs font-bold text-gray-500 uppercase">Valuasi Aset Gudang</p>
-                    <p class="text-2xl font-bold text-purple-700 mt-2">Rp {{ number_format($assetValue, 0, ',', '.') }}</p>
+                    <p class="text-2xl font-bold text-purple-700 mt-2">$ {{ number_format($assetValue, 2, '.', ',') }}</p>
                     <p class="text-xs text-gray-400 mt-1">
                         Posisi per: {{ \Carbon\Carbon::parse($valuationDate)->format('d M Y') }}
                     </p>
@@ -89,7 +89,7 @@
                         <div class="flex justify-between">
                             <span class="text-gray-600">Rata-rata Omzet</span>
                             <span class="font-bold text-gray-900">
-                                Rp {{ $trxCount > 0 ? number_format($omzet / $trxCount, 0, ',', '.') : 0 }}
+                                $ {{ $trxCount > 0 ? number_format($omzet / $trxCount, 2, '.', ',') : 0 }}
                             </span>
                         </div>
                     </div>
