@@ -1,66 +1,104 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <a href="http://immanuel-store.test" target="_blank">
+    <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="300" alt="Immanuel Store Logo">
+  </a>
 </p>
 
-## About Laravel
+<p align="center">
+    <img src="https://img.shields.io/badge/PHP-8.3-777BB4.svg?style=flat-square&logo=php&logoColor=white" alt="PHP 8.3">
+    <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20.svg?style=flat-square&logo=laravel&logoColor=white" alt="Laravel 12">
+    <img src="https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC.svg?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License"></a>
+</p>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+# Immanuel Store
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**Immanuel Store** adalah aplikasi manajemen toko dan Point of Sales (POS) berbasis web yang modern dan efisien. Dibangun menggunakan framework Laravel terbaru, aplikasi ini dirancang untuk membantu pengelolaan inventaris barang, pencatatan transaksi, hingga pelaporan keuangan secara *real-time*.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🚀 Fitur Utama
 
-## Learning Laravel
+Berdasarkan modul yang tersedia, aplikasi ini memiliki fitur unggulan sebagai berikut:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+-   **Dashboard Interaktif**: Ringkasan performa toko dalam satu pandangan.
+-   **Manajemen Barang (Items)**:
+    -   CRUD (Create, Read, Update, Delete) data barang.
+    -   **Ekspor Data**: Mendukung unduhan data barang ke format **Excel** dan **PDF**.
+-   **Transaksi Penjualan**:
+    -   Pencatatan transaksi yang mudah.
+    -   Cetak struk atau laporan transaksi ke **Excel** dan **PDF**.
+-   **Laporan Keuangan**:
+    -   Pantau pemasukan dan pengeluaran toko.
+    -   Fitur ekspor laporan lengkap (PDF/Excel) untuk pembukuan.
+-   **Riwayat Aktivitas (History)**: Log aktivitas untuk memantau perubahan data dan keamanan sistem.
+-   **Manajemen Pengguna (Users)**: Pengelolaan akun admin dan staf toko.
+-   **Otentikasi Aman**: Menggunakan sistem login/registrasi yang aman (Laravel Breeze).
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## 🛠️ Teknologi yang Digunakan
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+-   **Backend**: [Laravel 12](https://laravel.com) & [PHP 8.3](https://php.net)
+-   **Frontend**: Blade Templates & [Tailwind CSS](https://tailwindcss.com)
+-   **Database**: MySQL / MariaDB
+-   **Packages Pendukung**:
+    -   `maatwebsite/excel`: Untuk ekspor laporan ke Excel.
+    -   `barryvdh/laravel-dompdf`: Untuk cetak laporan ke PDF.
 
-## Laravel Sponsors
+## ⚙️ Persyaratan Sistem
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Pastikan server atau lingkungan lokal Anda memenuhi persyaratan berikut:
 
-### Premium Partners
+-   **PHP**: >= 8.3
+-   **Composer**: Versi terbaru
+-   **Node.js & NPM**: Untuk mengompilasi aset frontend
+-   **Database**: MySQL, PostgreSQL, atau SQLite
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## 📦 Instalasi & Penggunaan
 
-## Contributing
+Ikuti langkah-langkah berikut untuk menjalankan proyek ini di komputer lokal Anda:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1.  **Clone Repositori**
+    ```bash
+    git clone [https://github.com/username-anda/immanuel-store.git](https://github.com/username-anda/immanuel-store.git)
+    cd immanuel-store
+    ```
 
-## Code of Conduct
+2.  **Instal Dependensi PHP & JavaScript**
+    ```bash
+    composer install
+    npm install
+    ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3.  **Konfigurasi Lingkungan (.env)**
+    Salin file contoh `.env` dan sesuaikan dengan konfigurasi database Anda.
+    ```bash
+    cp .env.example .env
+    ```
+    *Buka file `.env` dan atur `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` sesuai database lokal Anda.*
 
-## Security Vulnerabilities
+4.  **Generate Application Key**
+    ```bash
+    php artisan key:generate
+    ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+5.  **Migrasi Database**
+    Jalankan migrasi untuk membuat tabel yang diperlukan.
+    ```bash
+    php artisan migrate
+    ```
+    *(Opsional) Jika ingin mengisi data dummy untuk pengetesan:*
+    ```bash
+    php artisan db:seed
+    ```
 
-## License
+6.  **Jalankan Aplikasi**
+    Anda perlu menjalankan server Laravel dan Vite (untuk aset) secara bersamaan (atau di terminal terpisah).
+    ```bash
+    npm run dev
+    php artisan serve
+    ```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+7.  **Akses Aplikasi**
+    Buka browser dan kunjungi: `http://localhost:8000`
+
+## 📄 Lisensi
+
+Aplikasi ini adalah perangkat lunak open-source di bawah lisensi [MIT](https://opensource.org/licenses/MIT).
