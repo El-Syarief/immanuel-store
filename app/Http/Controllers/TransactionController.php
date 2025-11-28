@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\History;
 use App\Models\User; // Import User
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -194,6 +195,20 @@ class TransactionController extends Controller
                         }
                     }
                 }
+
+                // Create an audit entry for the transaction (summary)
+                Audit::create([
+                    'actor_id' => Auth::id(),
+                    'type' => 'transaction.create',
+                    'reference_id' => $transaction->id,
+                    'payload' => json_encode([
+                        'invoice_code' => $transaction->invoice_code,
+                        'type' => $transaction->type,
+                        'grand_total' => $transaction->grand_total,
+                        'items_count' => count($cartItems),
+                    ]),
+                    'reason' => 'Buat Transaksi ' . $transaction->invoice_code,
+                ]);
             });
             return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil disimpan!');
         } catch (\Exception $e) {
@@ -216,17 +231,38 @@ class TransactionController extends Controller
 
         try {
             DB::transaction(function () use ($transaction) {
+                // Set a reason so ItemObserver will store per-item history
+                request()->merge(['history_reason' => 'Hapus Transaksi ' . $transaction->invoice_code]);
+
                 // Kembalikan Stok Barang Sebelum Hapus
                 foreach ($transaction->details as $detail) {
+                    $item = Item::find($detail->item_id);
+                    if (!$item) continue;
+
                     if ($transaction->type === 'in') {
                         // Kalau tadi IN (nambah stok), sekarang dihapus berarti stok harus DIKURANGI
-                        Item::where('id', $detail->item_id)->decrement('stock', $detail->quantity);
+                        $item->stock = max(0, $item->stock - $detail->quantity);
+                        $item->save();
                     } else {
                         // Kalau tadi OUT (kurang stok), sekarang dihapus berarti stok harus DIKEMBALIKAN
-                        Item::where('id', $detail->item_id)->increment('stock', $detail->quantity);
+                        $item->stock = $item->stock + $detail->quantity;
+                        $item->save();
                     }
                 }
-                
+
+                // Create audit record about deletion
+                Audit::create([
+                    'actor_id' => auth()->id(),
+                    'type' => 'transaction.delete',
+                    'reference_id' => $transaction->id,
+                    'payload' => json_encode([
+                        'invoice_code' => $transaction->invoice_code,
+                        'type' => $transaction->type,
+                        'items_count' => $transaction->details->count(),
+                    ]),
+                    'reason' => 'Hapus Transaksi ' . $transaction->invoice_code,
+                ]);
+
                 $transaction->delete(); // Hapus Transaksi
             });
 
@@ -257,10 +293,24 @@ class TransactionController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $old = $transaction->only(['market', 'transaction_date', 'description']);
+
         $transaction->update([
             'market' => $request->market,
             'transaction_date' => $request->transaction_date,
             'description' => $request->description,
+        ]);
+
+        // Audit: record what changed
+        Audit::create([
+            'actor_id' => auth()->id(),
+            'type' => 'transaction.update',
+            'reference_id' => $transaction->id,
+            'payload' => json_encode([
+                'old' => $old,
+                'new' => $transaction->only(['market', 'transaction_date', 'description']),
+            ]),
+            'reason' => 'Edit Transaksi ' . $transaction->invoice_code,
         ]);
 
         return redirect()->route('transactions.index')->with('success', 'Data transaksi berhasil diperbarui.');

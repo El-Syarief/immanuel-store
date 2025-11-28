@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -50,11 +51,20 @@ class UserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        User::create([
+        $new = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'role' => $request->role,
             'password' => Hash::make($request->password),
+        ]);
+
+        // Audit record
+        Audit::create([
+            'actor_id' => auth()->id(),
+            'type' => 'user.create',
+            'reference_id' => $new->id,
+            'payload' => json_encode($new->toArray()),
+            'reason' => 'Tambah Pengguna ' . $new->username,
         ]);
 
         return redirect()->route('users.index')->with('success', 'User baru berhasil ditambahkan!');
@@ -104,7 +114,17 @@ class UserController extends Controller
             $data['password'] = Hash::make($request->password);
         }
 
+        $old = $user->only(['name', 'username', 'role']);
+
         $user->update($data);
+
+        Audit::create([
+            'actor_id' => auth()->id(),
+            'type' => 'user.update',
+            'reference_id' => $user->id,
+            'payload' => json_encode(['old' => $old, 'new' => $user->only(['name','username','role'])]),
+            'reason' => 'Edit Pengguna ' . $user->username,
+        ]);
 
         return redirect()->route('users.index')->with('success', 'Data user berhasil diperbarui!');
     }
@@ -124,6 +144,14 @@ class UserController extends Controller
         }
 
         $user->delete();
+
+        Audit::create([
+            'actor_id' => auth()->id(),
+            'type' => 'user.delete',
+            'reference_id' => $user->id,
+            'payload' => json_encode($user->toArray()),
+            'reason' => 'Hapus Pengguna ' . $user->username,
+        ]);
 
         return redirect()->route('users.index')->with('success', 'User berhasil dinonaktifkan.');
     }

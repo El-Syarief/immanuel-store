@@ -266,6 +266,8 @@ class ItemController extends Controller
     public function destroy(Item $item)
     {
         $this->authorizeAdmin();
+        // Set a reason so ItemObserver will record this deletion
+        request()->merge(['history_reason' => 'Hapus Barang: ' . $item->name]);
         $item->delete();
         return redirect()->route('items.index')->with('success', 'Barang berhasil dihapus!');
     }

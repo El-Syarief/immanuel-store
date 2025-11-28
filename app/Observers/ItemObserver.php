@@ -63,4 +63,29 @@ class ItemObserver
             ]);
         }
     }
+
+    public function deleted(Item $item)
+    {
+        $reason = request()->input('history_reason', 'Hapus Barang');
+
+        History::create([
+            'item_id' => $item->id,
+            'user_id' => Auth::id() ?? 1,
+
+            // Catat harga & stok lama, dan set baru = null/0 untuk penghapusan
+            'old_buy_price' => $item->getOriginal('buy_price') ?? $item->buy_price,
+            'new_buy_price' => null,
+
+            'old_sell_price' => $item->getOriginal('sell_price') ?? $item->sell_price,
+            'new_sell_price' => null,
+
+            'old_stock' => $item->getOriginal('stock') ?? $item->stock,
+            'new_stock' => null,
+
+            'old_market' => $item->getOriginal('market') ?? $item->market,
+            'new_market' => null,
+
+            'reason' => $reason,
+        ]);
+    }
 }
