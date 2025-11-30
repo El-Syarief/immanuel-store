@@ -8,9 +8,12 @@ use App\Models\TransactionDetail;
 use App\Models\History;
 use App\Models\User; // Import User
 use App\Models\Audit;
+use App\Mail\LowStockAlert;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\TransactionsExport;
@@ -155,6 +158,8 @@ class TransactionController extends Controller
                     'description' => $request->description,
                 ]);
 
+                $lowStockItems = []; // Array penampung barang kritis
+
                 foreach ($cartItems as $cart) {
                     $dbItem = Item::find($cart['id']);
                     if (!$dbItem) continue;
@@ -190,6 +195,14 @@ class TransactionController extends Controller
                         if ($dbItem->stock >= $cart['qty']) {
                             $dbItem->stock = $dbItem->stock - $cart['qty'];
                             $dbItem->save();
+
+                            if ($dbItem->stock <= 1) {
+                                $lowStockItems[] = [
+                                    'code' => $dbItem->code,
+                                    'name' => $dbItem->name,
+                                    'stock' => $dbItem->stock
+                                ];
+                            }
                         } else {
                             throw new \Exception("Stok barang {$dbItem->name} tidak cukup! Sisa: {$dbItem->stock}");
                         }
@@ -209,7 +222,28 @@ class TransactionController extends Controller
                     ]),
                     'reason' => 'Buat Transaksi ' . $transaction->invoice_code,
                 ]);
+
+                if (!empty($lowStockItems)) {
+                    // 1. Kirim Email ke SEMUA Admin yang punya email
+                    $admins = User::where('role', 'admin')->whereNotNull('email')->get();
+                    foreach ($admins as $admin) {
+                        // Gunakan try-catch agar jika email gagal, transaksi TIDAK error
+                        try {
+                            Mail::to($admin->email)->send(new LowStockAlert($lowStockItems));
+                        } catch (\Exception $e) {
+                            // Log error email tapi jangan batalkan transaksi
+                            \Log::error("Gagal kirim email stok: " . $e->getMessage());
+                        }
+                    }
+
+                    // 2. Set Session Flash khusus untuk trigger suara di Frontend
+                    session()->flash('play_alert_sound', true);
+                    session()->flash('warning', 'PERHATIAN: Beberapa barang stoknya habis/kritis! Cek email admin.');
+                }
             });
+            if (session()->has('warning')) {
+                return redirect()->route('transactions.index')->with('success', 'Transaksi tersimpan.')->with('warning', session('warning'));
+            }
             return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil disimpan!');
         } catch (\Exception $e) {
             return back()->withInput()->withErrors(['error' => 'Gagal: ' . $e->getMessage()]);

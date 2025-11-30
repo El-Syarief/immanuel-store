@@ -35,11 +35,6 @@
                             </div>
                         </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100" x-show="transactionType === 'out'" x-transition>
-                            <label class="block font-medium text-sm text-gray-700 mb-1">Target Market / Customer <span class="text-red-500">*</span></label>
-                            <input class="border-gray-300 rounded-md shadow-sm w-full" type="text" name="market" placeholder="Contoh: Pelanggan A...">
-                        </div>
-
                         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <h3 class="text-lg font-bold text-gray-800 mb-4">Pilih Barang</h3>
                             <select id="item_select" class="w-full" placeholder="Cari Barang..." autocomplete="off">
@@ -58,6 +53,11 @@
                                 @endforeach
                             </select>
                             <button type="button" @click="addToCart()" class="mt-4 w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">+ Masukkan</button>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100" x-show="transactionType === 'out'" x-transition>
+                            <label class="block font-medium text-sm text-gray-700 mb-1">Target Market / Customer <span class="text-red-500">*</span></label>
+                            <input class="border-gray-300 rounded-md shadow-sm w-full" type="text" name="market" placeholder="Contoh: Pelanggan A...">
                         </div>
                     </div>
 

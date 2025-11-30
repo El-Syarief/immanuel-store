@@ -22,8 +22,17 @@ class ProfileUpdateRequest extends FormRequest
                 'required', 
                 'string', 
                 'max:255', 
-                'alpha_dash', // Hanya boleh huruf, angka, strip, underscore (opsional)
+                // 'alpha_dash', Hanya boleh huruf, angka, strip, underscore (opsional)
                 \Illuminate\Validation\Rule::unique(User::class)->ignore($this->user()->id),
+            ],
+            'email' => [
+                'nullable', 
+                'string', 
+                'lowercase', 
+                'email', 
+                'max:255', 
+                // Unik, kecuali punya sendiri; use imported classes
+                Rule::unique(User::class)->ignore($this->user()->id),
             ],
         ];
     }

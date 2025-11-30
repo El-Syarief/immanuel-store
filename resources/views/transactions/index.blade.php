@@ -30,6 +30,17 @@
                 <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm">{{ session('success') }}</div>
             @endif
 
+            {{-- ALERT PERINGATAN (Tambahkan ini agar pesan merah muncul) --}}
+            @if(session('warning'))
+                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm flex items-start gap-3 animate-pulse">
+                    <span class="text-2xl">⚠️</span>
+                    <div>
+                        <p class="font-bold">PERINGATAN STOK!</p>
+                        <p>{{ session('warning') }}</p>
+                    </div>
+                </div>
+            @endif
+
             <div class="bg-white p-6 rounded-2xl shadow-sm mb-6 border border-gray-100">
                 <form method="GET" action="{{ route('transactions.index') }}">
                     

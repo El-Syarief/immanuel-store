@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('username')->unique();
+            $table->string('email')->nullable()->unique(); // Email boleh kosong dulu buat user lama (opsional) atau langsung unique
+            $table->timestamp('email_verified_at')->nullable();
             $table->timestamp('username_verified_at')->nullable();
             $table->string('password');
             $table->enum('role', ['admin', 'cashier'])->default('cashier');

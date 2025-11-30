@@ -32,6 +32,12 @@ class ProfileController extends Controller
             $request->user()->email_verified_at = null;
         }
 
+        // Jika email yang dikirim berbeda dengan email di database (berarti user ganti email)
+        if ($request->user()->isDirty('email')) {
+            // Reset status verifikasi jadi NULL (Belum verifikasi)
+            $request->user()->email_verified_at = null;
+        }
+
         $request->user()->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');

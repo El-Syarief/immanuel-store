@@ -5,7 +5,7 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __("Perbarui informasi akun dan username Anda.") }}
+            {{ __("Perbarui informasi akun, email notifikasi, dan username Anda.") }}
         </p>
     </header>
 
@@ -17,18 +17,47 @@
         @csrf
         @method('patch')
 
+        {{-- INPUT NAMA --}}
         <div>
             <x-input-label for="name" :value="__('Nama Lengkap')" />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
+        {{-- INPUT USERNAME --}}
         <div>
             <x-input-label for="username" :value="__('Username')" />
             <x-text-input id="username" name="username" type="text" class="mt-1 block w-full" :value="old('username', $user->username)" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('username')" />
         </div>
 
+        {{-- INPUT EMAIL (Untuk Notifikasi) --}}
+        <div>
+            <x-input-label for="email" :value="__('Email (Untuk Notifikasi Stok)')" />
+            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" />
+            <x-input-error class="mt-2" :messages="$errors->get('email')" />
+
+            {{-- Cek Verifikasi Email (Jika User Menerapkan MustVerifyEmail) --}}
+            @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail() && isset($user->email) && $user->email)
+                <div class="mt-2">
+                    <p class="text-sm text-gray-800">
+                        {{ __('Email belum diverifikasi.') }}
+
+                        <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            {{ __('Klik di sini untuk kirim ulang verifikasi.') }}
+                        </button>
+                    </p>
+
+                    @if (session('status') === 'verification-link-sent')
+                        <p class="mt-2 font-medium text-sm text-green-600">
+                            {{ __('Link verifikasi baru telah dikirim ke email Anda.') }}
+                        </p>
+                    @endif
+                </div>
+            @endif
+        </div>
+
+        {{-- INPUT ROLE (Read Only) --}}
         <div>
             <x-input-label for="role" :value="__('Role / Jabatan')" />
             <x-text-input id="role" type="text" class="mt-1 block w-full bg-gray-100 text-gray-500 cursor-not-allowed" :value="ucfirst($user->role)" disabled />
