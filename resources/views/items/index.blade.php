@@ -1,10 +1,35 @@
 <x-app-layout>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-    <style>
+    <!-- <style>
         /* Custom Style agar TomSelect serasi dengan Tailwind */
         .ts-control { border-radius: 0.5rem; border-color: #d1d5db; padding: 0.5rem; font-size: 0.875rem; }
         .ts-wrapper.single .ts-control { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+    </style> -->
+
+    <style>
+        /* 1. Menyamakan Border Radius (rounded-lg = 0.5rem) & Warna Border */
+        .ts-control {
+            border-radius: 0.5rem !important; /* rounded-lg */
+            border-color: #d1d5db !important; /* border-gray-300 */
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            min-height: 42px; /* Menyamakan tinggi dengan input sebelah */
+            display: flex;
+            align-items: center;
+        }
+
+        /* 2. Menghilangkan shadow biru bawaan TomSelect saat aktif agar mirip input biasa */
+        .ts-wrapper.focus .ts-control {
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5) !important; /* ring-indigo-500 */
+            border-color: #6366f1 !important; /* border-indigo-500 */
+        }
+
+        /* 3. Merapikan posisi text di dalam */
+        .ts-dropdown {
+            border-radius: 0.5rem;
+            margin-top: 4px;
+        }
     </style>
 
     <x-slot name="header">

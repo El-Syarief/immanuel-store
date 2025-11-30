@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\Warehouse;
+use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -203,6 +204,10 @@ class ItemController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $item) {
+            $oldData = $item->fresh(['warehouses']);
+            $oldWarehouses = $oldData->warehouses->pluck('name')->toArray();
+            $oldAttributes = $oldData->only(['code', 'name', 'criteria', 'description']);
+
             $oldStock = $item->stock;
             $newStock = $request->stock;
             $diff = $newStock - $oldStock;
@@ -227,12 +232,53 @@ class ItemController extends Controller
                 $item->warehouses()->detach();
             }
 
+            // AUDIT LOG MANUAL (UNTUK DATA ADMINISTRATIF)
+            // Kita ambil data baru setelah update
+            $newItem = $item->fresh(['warehouses']);
+            $newWarehouses = $newItem->warehouses->pluck('name')->toArray();
+            $newAttributes = $newItem->only(['code', 'name', 'criteria', 'description']);
+
+            $changes = [];
+
+            // Bandingkan atribut dasar (Code, Name, Criteria, Description)
+            foreach ($oldAttributes as $key => $value) {
+                if ($newAttributes[$key] != $value) {
+                    $changes[$key] = [
+                        'old' => $value ?? '-', 
+                        'new' => $newAttributes[$key] ?? '-'
+                    ];
+                }
+            }
+
+            // Bandingkan gudang (Array comparison)
+            // Jika susunan gudang berubah, catat.
+            sort($oldWarehouses); // sort agar urutan tidak mempengaruhi
+            sort($newWarehouses);
+            if ($oldWarehouses !== $newWarehouses) {
+                $changes['warehouses'] = [
+                    'old' => implode(', ', $oldWarehouses),
+                    'new' => implode(', ', $newWarehouses)
+                ];
+            }
+
+            // Jika ada perubahan data (selain stok/harga yg dihandle observer), simpan ke Audit
+            if (!empty($changes)) {
+                Audit::create([
+                    'actor_id' => auth()->id(),
+                    'type' => 'item.update_info', // Tipe khusus info
+                    'reference_id' => $item->id,
+                    'payload' => json_encode($changes), // Simpan perubahannya
+                    'reason' => 'Update Detail Barang: ' . $item->code . ' - ' . $item->name,
+                ]);
+            }
+
             // SINKRONISASI TRANSAKSI KOREKSI
             if ($diff != 0) {
                 $type = $diff > 0 ? 'in' : 'out';
                 $qty = abs($diff);
                 $price = $item->buy_price; 
                 $subtotal = $qty * $price;
+                $warehouseId = $item->warehouses->first()->id ?? null;
 
                 // Ambil gudang pertama dari relasi terbaru
                 $warehouseId = $item->warehouses->first()->id ?? null;

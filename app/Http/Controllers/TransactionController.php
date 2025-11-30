@@ -293,13 +293,28 @@ class TransactionController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $old = $transaction->only(['market', 'transaction_date', 'description']);
+        //Ambil data lama & format tanggalnya secara manual agar tidak jadi UTC
+        $old = [
+            'market' => $transaction->market,
+            // Cek apakah transaction_date berupa objek Carbon, jika ya format, jika tidak pakai langsung
+            'transaction_date' => $transaction->transaction_date instanceof \Carbon\Carbon 
+                ? $transaction->transaction_date->format('Y-m-d') 
+                : $transaction->transaction_date,
+            'description' => $transaction->description,
+        ];
 
         $transaction->update([
             'market' => $request->market,
             'transaction_date' => $request->transaction_date,
             'description' => $request->description,
         ]);
+
+        //Siapkan data baru dengan format tanggal yang dipaksa string
+        $newData = [
+            'market' => $transaction->market,
+            'transaction_date' => \Carbon\Carbon::parse($request->transaction_date)->format('Y-m-d'),
+            'description' => $transaction->description,
+        ];
 
         // Audit: record what changed
         Audit::create([
@@ -308,7 +323,7 @@ class TransactionController extends Controller
             'reference_id' => $transaction->id,
             'payload' => json_encode([
                 'old' => $old,
-                'new' => $transaction->only(['market', 'transaction_date', 'description']),
+                'new' => $newData, // Gunakan variabel array yang sudah diformat
             ]),
             'reason' => 'Edit Transaksi ' . $transaction->invoice_code,
         ]);

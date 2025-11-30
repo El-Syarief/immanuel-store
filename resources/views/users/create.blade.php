@@ -28,10 +28,20 @@
                         <div class="mb-4">
                             <x-input-label for="role" :value="__('Peran (Role)')" />
                             <select id="role" name="role" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                {{-- Opsi Cashier: Bisa dilihat semua admin --}}
                                 <option value="cashier" {{ old('role') == 'cashier' ? 'selected' : '' }}>Cashier (Kasir)</option>
-                                <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin (Pengelola)</option>
+                                
+                                {{-- Opsi Admin: HANYA untuk Super Admin (ID 1) --}}
+                                @if(auth()->id() === 1)
+                                    <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin (Pengelola)</option>
+                                @endif
                             </select>
                             <x-input-error :messages="$errors->get('role')" class="mt-2" />
+                            
+                            {{-- Pesan kecil agar user admin biasa paham kenapa opsinya cuma satu --}}
+                            @if(auth()->id() !== 1)
+                                <p class="text-xs text-gray-500 mt-1 italic">* Hanya Super Admin yang dapat menambahkan Admin baru.</p>
+                            @endif
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

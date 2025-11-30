@@ -65,10 +65,26 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->created_at->format('d M Y') }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                         <div class="flex justify-center space-x-2">
-                                            <a href="{{ route('users.edit', $user->id) }}" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 p-2 rounded hover:bg-yellow-100" title="Edit">✏️</a>
-                                            
-                                            @if($user->id !== auth()->id()) <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Yakin nonaktifkan user ini?');">
-                                                    @csrf @method('DELETE')
+                                            @php
+                                                $isSuperAdmin = auth()->id() === 1;
+                                                $targetIsAdmin = $user->role === 'admin';
+                                                $isSelf = $user->id === auth()->id();
+                                                
+                                                // Logika Gabungan: 
+                                                // Boleh akses (Edit/Hapus) jika: SAYA Super Admin ATAU Target BUKAN Admin
+                                                $canManage = $isSuperAdmin || !$targetIsAdmin;
+                                            @endphp
+
+                                            {{-- TOMBOL EDIT --}}
+                                            @if(!$isSelf && $canManage)
+                                                <a href="{{ route('users.edit', $user->id) }}" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 p-2 rounded hover:bg-yellow-100" title="Edit">✏️</a>
+                                            @endif
+
+                                            {{-- TOMBOL HAPUS --}}
+                                            @if(!$isSelf && $canManage) 
+                                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Yakin nonaktifkan user ini?');">
+                                                    @csrf 
+                                                    @method('DELETE')
                                                     <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded hover:bg-red-100" title="Hapus">🗑️</button>
                                                 </form>
                                             @endif

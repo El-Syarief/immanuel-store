@@ -158,8 +158,8 @@
                     const opt = document.querySelector(`#item_select option[value="${val}"]`);
                     
                     const stock = parseInt(opt.getAttribute('data-stock')) || 0;
-                    const sell = parseInt(opt.getAttribute('data-sell-price')) || 0;
-                    const buy = parseInt(opt.getAttribute('data-buy-price')) || 0;
+                    const sell = parseFloat(opt.getAttribute('data-sell-price')) || 0;
+                    const buy = parseFloat(opt.getAttribute('data-buy-price')) || 0;
                     const wh = opt.getAttribute('data-warehouses'); // Ambil nama gudang
 
                     let price = (this.transactionType === 'out') ? sell : buy;

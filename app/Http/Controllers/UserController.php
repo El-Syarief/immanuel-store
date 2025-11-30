@@ -44,6 +44,11 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $this->authorizeAdmin();
+
+        if ($request->role === 'admin' && auth()->id() !== 1) {
+             abort(403, 'AKSES DITOLAK: Hanya Super Admin yang diizinkan menambah Admin baru.');
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users'],
@@ -73,11 +78,22 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $this->authorizeAdmin();
-        
-        // PROTEKSI 1: Admin biasa tidak boleh mengedit Super Admin (ID 1)
-        // Kecuali dia sendiri adalah Super Admin itu
+
+        // 1. JIKA EDIT DIRI SENDIRI -> LEMPAR KE HALAMAN PROFIL
+        if ($user->id === auth()->id()) {
+            // Asumsi kamu pakai route profile.edit bawaan Breeze/Jetstream
+            return redirect()->route('profile.edit'); 
+        }
+
+        // 2. PROTEKSI HIERARKI
+        // Jika saya BUKAN Super Admin (ID 1), TAPI saya mencoba mengedit user yang role-nya ADMIN
+        if (auth()->id() !== 1 && $user->role === 'admin') {
+            abort(403, 'AKSES DITOLAK: Admin biasa tidak diizinkan mengedit sesama Admin.');
+        }
+
+        // 3. Proteksi Super Admin (sudah ada sebelumnya, tapi dipertegas)
         if ($user->id === 1 && auth()->id() !== 1) {
-            return redirect()->route('users.index')->with('error', 'Anda tidak memiliki akses untuk mengedit Super Admin.');
+             abort(403, 'Hanya Super Admin yang bisa mengedit akun Utama.');
         }
 
         return view('users.edit', compact('user'));
@@ -86,6 +102,16 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $this->authorizeAdmin();
+        
+        // CEK DIRI SENDIRI
+        if ($user->id === auth()->id()) {
+             return redirect()->route('profile.edit')->with('status', 'Silakan update data melalui halaman profil.');
+        }
+
+        // CEK HIERARKI (Sama seperti edit)
+        if (auth()->id() !== 1 && $user->role === 'admin') {
+            abort(403, 'AKSES DITOLAK: Admin biasa tidak diizinkan mengubah data sesama Admin.');
+        }
 
         // PROTEKSI 2: Cek lagi saat update
         if ($user->id === 1 && auth()->id() !== 1) {
@@ -141,6 +167,10 @@ class UserController extends Controller
         // Proteksi diri sendiri
         if ($user->id === auth()->id()) {
             return back()->withErrors(['error' => 'Anda tidak dapat menghapus akun sendiri!']);
+        }
+
+        if ($user->role === 'admin' && auth()->id() !== 1) {
+             return back()->withErrors(['error' => 'AKSES DITOLAK: Anda tidak memiliki wewenang menghapus sesama Admin.']);
         }
 
         $user->delete();

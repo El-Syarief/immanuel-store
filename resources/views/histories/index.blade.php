@@ -1,4 +1,31 @@
 <x-app-layout>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    <style>
+        /* 1. Menyamakan Border Radius (rounded-lg = 0.5rem) & Warna Border */
+        .ts-control {
+            border-radius: 0.5rem !important; /* rounded-lg */
+            border-color: #d1d5db !important; /* border-gray-300 */
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            min-height: 42px; /* Menyamakan tinggi dengan input sebelah */
+            display: flex;
+            align-items: center;
+        }
+
+        /* 2. Menghilangkan shadow biru bawaan TomSelect saat aktif agar mirip input biasa */
+        .ts-wrapper.focus .ts-control {
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5) !important; /* ring-indigo-500 */
+            border-color: #6366f1 !important; /* border-indigo-500 */
+        }
+
+        /* 3. Merapikan posisi text di dalam */
+        .ts-dropdown {
+            border-radius: 0.5rem;
+            margin-top: 4px;
+        }
+    </style>
+
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Riwayat Aktivitas (Audit Log)') }}
@@ -9,11 +36,13 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             <div class="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-100">
-                <form method="GET" action="{{ route('histories.index') }}" class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                <form method="GET" action="{{ route('histories.index') }}" id="filterFormHistory" class="grid grid-cols-1 md:grid-cols-12 md:grid-cols-12 gap-4 items-end">
                     
+                    {{-- 1. PILIH BARANG (TomSelect) --}}
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Barang</label>
-                        <select name="item_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Filter Barang</label>
+                        <select id="select-item" name="item_id" placeholder="Cari Barang..." autocomplete="off" 
+                            onchange="document.getElementById('filterFormHistory').submit()">
                             <option value="">Semua Barang</option>
                             @foreach($items as $item)
                                 <option value="{{ $item->id }}" {{ request('item_id') == $item->id ? 'selected' : '' }}>
@@ -23,9 +52,17 @@
                         </select>
                     </div>
 
-                    <div>
+                    {{-- 2. KATA KUNCI (Text) --}}
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Kata Kunci / Aktivitas</label>
+                        <input type="text" name="search_text" value="{{ request('search_text') }}" placeholder="Cth: Koreksi, Edit, Hapus..." class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 h-[42px]"> 
+                        {{-- h-[42px] agar tingginya sama dengan TomSelect --}}
+                    </div>
+
+                    {{-- 3. AKTOR --}}
+                    <div class="md:col-span-2">
                         <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Aktor</label>
-                        <select name="user_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <select name="user_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 h-[42px]">
                             <option value="">Semua User</option>
                             @foreach($users as $user)
                                 <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
@@ -35,23 +72,23 @@
                         </select>
                     </div>
 
-                    <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Dari Tgl</label>
-                        <input type="date" name="date_start" value="{{ request('date_start') }}" class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    {{-- 4. RENTANG WAKTU --}}
+                    <div class="md:col-span-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Tanggal</label>
+                        <div class="flex gap-1">
+                            <input type="date" name="date_start" value="{{ request('date_start') }}" class="w-full border-gray-300 rounded-lg text-sm px-1 focus:ring-indigo-500 focus:border-indigo-500 h-[42px]" title="Dari Tanggal">
+                            <input type="date" name="date_end" value="{{ request('date_end') }}" class="w-full border-gray-300 rounded-lg text-sm px-1 focus:ring-indigo-500 focus:border-indigo-500 h-[42px]" title="Sampai Tanggal">
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Sampai Tgl</label>
-                        <input type="date" name="date_end" value="{{ request('date_end') }}" class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-
-                    <div class="flex gap-2">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition w-full">
+                    {{-- 5. TOMBOL --}}
+                    <div class="md:col-span-2 flex gap-2">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition w-full shadow-md h-[42px]">
                             Cari
                         </button>
-                        @if(request()->hasAny(['item_id', 'user_id', 'date_start', 'date_end']))
-                            <a href="{{ route('histories.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-3 rounded-lg text-sm transition text-center" title="Reset">
-                                ↺
+                        @if(request()->hasAny(['item_id', 'user_id', 'date_start', 'date_end', 'search_text']))
+                            <a href="{{ route('histories.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-3 rounded-lg text-sm transition flex items-center justify-center border border-gray-300 h-[42px]" title="Reset Filter">
+                                ✕
                             </a>
                         @endif
                     </div>
@@ -115,7 +152,7 @@
                                                         <div class="text-xs text-gray-500">Barang</div>
                                                         <div class="font-bold text-indigo-600">{{ $data->item->name }} <span class="text-gray-500 font-mono">({{ $data->item->code }})</span></div>
                                                         @if($data->item->warehouses && $data->item->warehouses->count())
-                                                            <div class="text-xs text-gray-500 mt-1">Gudang: {{ $data->item->warehouses->pluck('name')->join(', ') }}</div>
+                                                            <div class="text-xs text-gray-500 mt-1">Akun: {{ $data->item->warehouses->pluck('name')->join(', ') }}</div>
                                                         @endif
                                                     </div>
                                                 @endif
@@ -128,17 +165,17 @@
                                                             @if($data->old_buy_price != $data->new_buy_price)
                                                                 <div class="text-xs">
                                                                     <span class="font-semibold">Modal:</span>
-                                                                    <span class="line-through text-gray-400">Rp {{ number_format($data->old_buy_price, 0, ',', '.') }}</span>
+                                                                    <span class="line-through text-gray-400">$ {{ number_format($data->old_buy_price, 2, '.', ',') }}</span>
                                                                     <span class="mx-2">→</span>
-                                                                    <span class="text-blue-600 font-bold">Rp {{ number_format($data->new_buy_price, 0, ',', '.') }}</span>
+                                                                    <span class="text-blue-600 font-bold">$ {{ number_format($data->new_buy_price, 2, '.', ',') }}</span>
                                                                 </div>
                                                             @endif
                                                             @if($data->old_sell_price != $data->new_sell_price)
                                                                 <div class="text-xs">
                                                                     <span class="font-semibold">Jual:</span>
-                                                                    <span class="line-through text-gray-400">Rp {{ number_format($data->old_sell_price, 0, ',', '.') }}</span>
+                                                                    <span class="line-through text-gray-400">$ {{ number_format($data->old_sell_price, 2, '.', ',') }}</span>
                                                                     <span class="mx-2">→</span>
-                                                                    <span class="text-green-600 font-bold">Rp {{ number_format($data->new_sell_price, 0, ',', '.') }}</span>
+                                                                    <span class="text-green-600 font-bold">$ {{ number_format($data->new_sell_price, 2, '.', ',') }}</span>
                                                                 </div>
                                                             @endif
                                                         </div>
@@ -163,7 +200,7 @@
                                                 {{-- Market / Warehouse changes --}}
                                                 @if(isset($data->old_market) && $data->old_market != $data->new_market)
                                                     <div>
-                                                        <div class="text-xs text-gray-500">Gudang / Market</div>
+                                                        <div class="text-xs text-gray-500">Akun / Market</div>
                                                         <div class="text-sm">
                                                             <span class="line-through text-gray-400">{{ $data->old_market ?? '-' }}</span>
                                                             <span class="mx-2">→</span>
@@ -199,9 +236,81 @@
                                                     <div>
                                                         <div class="text-xs text-gray-500">Rincian</div>
                                                         <div class="text-sm">
-                                                            @foreach($payload as $k => $v)
-                                                                <div><span class="font-semibold text-gray-600">{{ ucfirst($k) }}:</span> <span class="text-gray-800">{{ is_array($v) ? json_encode($v) : $v }}</span></div>
-                                                            @endforeach
+                                                            <div class="space-y-3">
+                                                                {{-- LOGIKA KHUSUS: Jika Payload strukturnya adalah Old vs New (seperti Edit Transaksi) --}}
+                                                                @if(isset($payload['old']) && isset($payload['new']))
+                                                                    <div class="grid grid-cols-2 gap-4">
+                                                                        <div class="bg-red-50 p-3 rounded-lg border border-red-100">
+                                                                            <div class="text-xs font-bold text-red-500 uppercase mb-2">Sebelum (Old)</div>
+                                                                            @foreach($payload['old'] as $subKey => $subVal)
+                                                                                <div class="text-xs mb-1">
+                                                                                    {{-- MODIFIKASI 1: Ubah label di mode Grid --}}
+                                                                                    <span class="font-semibold text-gray-600">
+                                                                                        {{ strtolower($subKey) == 'warehouses' ? 'Akun' : ucfirst(str_replace('_', ' ', $subKey)) }}:
+                                                                                    </span>
+                                                                                    <div class="text-gray-800 break-words">{{ is_array($subVal) ? json_encode($subVal) : $subVal }}</div>
+                                                                                </div>
+                                                                            @endforeach
+                                                                        </div>
+                                                                        <div class="bg-green-50 p-3 rounded-lg border border-green-100">
+                                                                            <div class="text-xs font-bold text-green-500 uppercase mb-2">Sesudah (New)</div>
+                                                                            @foreach($payload['new'] as $subKey => $subVal)
+                                                                                <div class="text-xs mb-1">
+                                                                                    {{-- MODIFIKASI 2: Ubah label di mode Grid --}}
+                                                                                    <span class="font-semibold text-gray-600">
+                                                                                        {{ strtolower($subKey) == 'warehouses' ? 'Akun' : ucfirst(str_replace('_', ' ', $subKey)) }}:
+                                                                                    </span>
+                                                                                    <div class="text-gray-800 font-medium break-words">{{ is_array($subVal) ? json_encode($subVal) : $subVal }}</div>
+                                                                                </div>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    </div>
+
+                                                                {{-- LOGIKA UMUM: Loop biasa (seperti Edit Barang / Screenshot kamu saat ini) --}}
+                                                                @else
+                                                                    @foreach($payload as $k => $v)
+                                                                        <div class="text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                                                            <div class="flex flex-col sm:flex-row sm:items-start gap-1">
+                                                                                
+                                                                                {{-- MODIFIKASI 3: Ubah label di mode List (Arrow) --}}
+                                                                                <div class="min-w-[120px] text-xs font-bold text-gray-500 uppercase pt-1">
+                                                                                    {{ strtolower($k) == 'warehouses' ? 'Akun' : str_replace('_', ' ', $k) }}
+                                                                                </div>
+
+                                                                                {{-- Value Content --}}
+                                                                                <div class="flex-1">
+                                                                                    @if(is_array($v) && isset($v['old']) && isset($v['new']))
+                                                                                        {{-- Tampilan Perubahan Spesifik (Style Panah) --}}
+                                                                                        <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                                                                                            <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs line-through decoration-red-700/50" title="Lama">
+                                                                                                {{ $v['old'] }}
+                                                                                            </span>
+                                                                                            <span class="text-gray-400">→</span>
+                                                                                            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold" title="Baru">
+                                                                                                {{ $v['new'] }}
+                                                                                            </span>
+                                                                                        </div>
+
+                                                                                    @elseif($k === 'grand_total' || str_contains($k, 'price'))
+                                                                                        {{-- Format Uang --}}
+                                                                                        <span class="font-mono font-bold text-gray-700">$ {{ number_format($v, 2) }}</span>
+
+                                                                                    @elseif(is_array($v))
+                                                                                        {{-- Jika Array biasa, tampilkan sebagai JSON code block kecil --}}
+                                                                                        <code class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 break-all">
+                                                                                            {{ json_encode($v) }}
+                                                                                        </code>
+
+                                                                                    @else
+                                                                                        {{-- Teks Biasa --}}
+                                                                                        <span class="text-gray-800 font-medium">{{ $v }}</span>
+                                                                                    @endif
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    @endforeach
+                                                                @endif
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 @endif
@@ -293,6 +402,13 @@
                     if (!cell) return;
                     openSidebar(cell.innerHTML);
                 });
+            });
+
+            new TomSelect("#select-item", {
+                // maxItems: 1,
+                create: false,
+                sortField: { field: "text", direction: "asc" },
+                plugins: ['clear_button']
             });
         });
     </script>

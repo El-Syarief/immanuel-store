@@ -66,11 +66,11 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th style="width: 40%;">Nama Barang</th>
-                        <th style="width: 25%;" class="text-right">Harga (Deal vs Audit)</th>
+                        <th style="width: 35%;">Nama Barang</th>
+                        <th style="width: 25%;" class="text-center">Harga (Deal vs Audit)</th>
                         <th style="width: 10%;" class="text-center">Qty</th>
-                        <th style="width: 25%;" class="text-right">Subtotal</th>
-                        <th style="width: 25%;" class="text-center">Catatan</th>
+                        <th style="width: 15%;" class="text-center">Subtotal</th>
+                        <th style="width: 15%;" class="text-center">Catatan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -101,7 +101,7 @@
                         <td class="text-center">{{ $detail->quantity }}</td>
                         
                         <td class="text-right">$ {{ number_format($detail->subtotal, 2, '.', ',') }}</td>
-                        <td class="text-center">{{ $trx->description}}</td>
+                        <td class="text-justify">{{ $trx->description}}</td>
                     </tr>
                     @endforeach
                 </tbody>
