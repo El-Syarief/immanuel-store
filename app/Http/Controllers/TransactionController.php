@@ -121,7 +121,7 @@ class TransactionController extends Controller
         $nextSeq = $lastTransaction ? ((int)substr($lastTransaction->invoice_code, -4) + 1) : 1;
         $seqString = str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
 
-        return view('transactions.create', compact('items', 'todayPrefix', 'seqString'));
+        return view('transactions.create', compact('items', 'todayPrefix', 'seqString', 'warehouses'));
     }
 
     public function store(Request $request)
@@ -164,6 +164,39 @@ class TransactionController extends Controller
                     $dbItem = Item::find($cart['id']);
                     if (!$dbItem) continue;
 
+                    // Kita ambil string gudang dari input, konversi jadi ID, lalu sync ke item
+                    // 1. UPDATE LOKASI BARANG & CATAT RIWAYAT
+                    if (isset($cart['warehouses'])) {
+                        // A. Ambil Data Lama (Snapshot)
+                        $oldWarehouses = $dbItem->warehouses->pluck('name')->toArray();
+                        sort($oldWarehouses); // Urutkan agar perbandingan akurat
+
+                        // B. Lakukan Update / Sync
+                        $warehouseIds = $this->processWarehouses($cart['warehouses']);
+                        $dbItem->warehouses()->sync($warehouseIds);
+
+                        // C. Ambil Data Baru (Snapshot)
+                        // Gunakan fresh() untuk mengambil relasi terbaru dari DB
+                        $newWarehouses = $dbItem->fresh()->warehouses->pluck('name')->toArray();
+                        sort($newWarehouses);
+
+                        // D. Bandingkan & Catat jika Berbeda
+                        if ($oldWarehouses !== $newWarehouses) {
+                            Audit::create([
+                                'actor_id' => Auth::id(),
+                                'type' => 'item.update_info', // Tipe ini sudah didukung di view history kamu
+                                'reference_id' => $dbItem->id, // Referensi ke Barang
+                                'payload' => json_encode([
+                                    'warehouses' => [
+                                        'old' => implode(', ', $oldWarehouses),
+                                        'new' => implode(', ', $newWarehouses)
+                                    ]
+                                ]),
+                                'reason' => 'Update Lokasi Akun via Transaksi ' . $transaction->invoice_code,
+                            ]);
+                        }
+                    }
+
                     $finalPrice = ($cart['price'] > 0) ? $cart['price'] : ($request->type == 'in' ? $dbItem->buy_price : $dbItem->sell_price);
 
                     TransactionDetail::create([
@@ -174,6 +207,7 @@ class TransactionController extends Controller
                         'subtotal' => $cart['qty'] * $finalPrice,
                         'buy_price_snapshot' => ($request->type == 'in') ? $finalPrice : $dbItem->buy_price,
                         'sell_price_snapshot' => ($request->type == 'out') ? $finalPrice : $dbItem->sell_price,
+                        'warehouse_snapshot' => $cart['warehouses'] ?? null,
                     ]);
 
                     if ($request->type === 'in') {
@@ -219,6 +253,7 @@ class TransactionController extends Controller
                         'type' => $transaction->type,
                         'grand_total' => $transaction->grand_total,
                         'items_count' => count($cartItems),
+                        'market' => $transaction->market,
                     ]),
                     'reason' => 'Buat Transaksi ' . $transaction->invoice_code,
                 ]);
@@ -390,5 +425,25 @@ class TransactionController extends Controller
         $transactions = $query->latest()->get();
         $pdf = Pdf::loadView('exports.transactions_pdf', compact('transactions'));
         return $pdf->download('laporan-transaksi-detail.pdf');
+    }
+
+    // --- HELPER: KONVERSI STRING GUDANG KE ID ---
+    private function processWarehouses($stringInput)
+    {
+        if (!$stringInput) return [];
+        
+        // Pecah string "Gudang A, Gudang B" jadi array
+        $names = explode(',', $stringInput);
+        $ids = [];
+
+        foreach ($names as $name) {
+            $cleanName = trim($name);
+            if(!empty($cleanName)) {
+                // Cari gudang by nama, kalau gak ada BUAT BARU
+                $wh = \App\Models\Warehouse::firstOrCreate(['name' => $cleanName]);
+                $ids[] = $wh->id;
+            }
+        }
+        return $ids;
     }
 }

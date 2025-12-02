@@ -83,7 +83,7 @@ class ItemController extends Controller
         $field = $sortParts[0]; 
         $direction = $sortParts[1] ?? 'desc';
 
-        $allowedSorts = ['name', 'created_at', 'updated_at', 'stock', 'price'];
+        $allowedSorts = ['name', 'created_at', 'updated_at', 'stock', 'price', 'code'];
         if (in_array($field, $allowedSorts)) {
             $query->orderBy($field, $direction);
         }

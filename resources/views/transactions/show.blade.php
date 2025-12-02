@@ -40,8 +40,9 @@
                         <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
                             <tr>
                                 <th class="px-4 py-3 text-left">Barang</th>
+                                <th class="px-4 py-3 text-left">Lokasi (Snapshot)</th>
                                 <th class="px-4 py-3 text-right">Harga Satuan (Deal)</th>
-                                
+                        
                                 <!-- <th class="px-4 py-3 text-right bg-yellow-50 text-yellow-800 border-l border-r border-yellow-100"> -->
                                 <th class="px-4 py-3 text-right">
                                     {{ $transaction->type == 'in' ? 'Ref. Harga Jual' : 'Ref. Modal' }}
@@ -57,6 +58,19 @@
                                     <td class="px-4 py-3">
                                         <div class="font-bold text-gray-800">{{ $detail->item->name ?? 'Barang Dihapus' }}</div>
                                         <div class="text-xs text-gray-500">{{ $detail->item->code ?? '-' }}</div>
+                                    </td>
+
+                                    <td class="px-4 py-3 text-xs text-gray-600 max-w-xs break-words">
+                                        @if(!empty($detail->warehouse_snapshot))
+                                            {{-- Tampilkan sebagai tags kecil agar rapi --}}
+                                            @foreach(explode(',', $detail->warehouse_snapshot) as $loc)
+                                                <span class="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded border border-gray-200 mr-1 mb-1">
+                                                    {{ trim($loc) }}
+                                                </span>
+                                            @endforeach
+                                        @else
+                                            <span class="text-gray-400 italic">-</span>
+                                        @endif
                                     </td>
                                     
                                     <td class="px-4 py-3 text-right text-sm font-medium">
@@ -100,7 +114,7 @@
                         </tbody>
                         <tfoot class="bg-gray-50">
                             <tr>
-                                <td colspan="4" class="px-4 py-4 text-right font-bold text-lg text-gray-600">TOTAL</td>
+                                <td colspan="5" class="px-4 py-4 text-right font-bold text-lg text-gray-600">TOTAL</td>
                                 <td class="px-4 py-4 text-right font-bold text-xl text-indigo-600">
                                     $ {{ number_format($transaction->grand_total, 2, '.', ',') }}
                                 </td>

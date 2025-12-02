@@ -1,11 +1,6 @@
 <x-app-layout>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-    <!-- <style>
-        /* Custom Style agar TomSelect serasi dengan Tailwind */
-        .ts-control { border-radius: 0.5rem; border-color: #d1d5db; padding: 0.5rem; font-size: 0.875rem; }
-        .ts-wrapper.single .ts-control { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-    </style> -->
 
     <style>
         /* 1. Menyamakan Border Radius (rounded-lg = 0.5rem) & Warna Border */
@@ -120,6 +115,17 @@
                             <div class="w-1/3">
                                 <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Urutkan</label>
                                 <select name="sort_by" onchange="this.form.submit()" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    <option value="" disabled selected>--> URUTKAN <--</option>
+                                    {{-- OPSI STOCK --}}
+                                    <option value="stock-desc" {{ request('sort_by') == 'stock-desc' ? 'selected' : '' }}>📦 Stok (Terbanyak)</option>
+                                    <option value="stock-asc" {{ request('sort_by') == 'stock-asc' ? 'selected' : '' }}>📦 Stok (Sedikit)</option>
+
+                                    {{-- OPSI KODE --}}
+                                    <option value="code-asc" {{ request('sort_by') == 'code-asc' ? 'selected' : '' }}>🔢 Kode (A - Z / 0 - 9)</option>
+                                    <option value="code-desc" {{ request('sort_by') == 'code-desc' ? 'selected' : '' }}>🔢 Kode (Z - A / 9 - 0)</option>
+
+                                    <option disabled>──────────</option>
+
                                     <option value="created_at-desc" {{ request('sort_by') == 'created_at-desc' ? 'selected' : '' }}>📅 Dibuat (Terbaru)</option>
                                     <option value="created_at-asc" {{ request('sort_by') == 'created_at-asc' ? 'selected' : '' }}>📅 Dibuat (Terlama)</option>
                                     <option value="updated_at-desc" {{ request('sort_by') == 'updated_at-desc' ? 'selected' : '' }}>✏️ Diupdate (Terbaru)</option>
