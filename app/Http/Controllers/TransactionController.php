@@ -230,7 +230,7 @@ class TransactionController extends Controller
                             $dbItem->stock = $dbItem->stock - $cart['qty'];
                             $dbItem->save();
 
-                            if ($dbItem->stock <= 1) {
+                            if ($dbItem->stock == 0) {
                                 $lowStockItems[] = [
                                     'code' => $dbItem->code,
                                     'name' => $dbItem->name,
@@ -272,8 +272,8 @@ class TransactionController extends Controller
                     }
 
                     // 2. Set Session Flash khusus untuk trigger suara di Frontend
-                    session()->flash('play_alert_sound', true);
-                    session()->flash('warning', 'PERHATIAN: Beberapa barang stoknya habis/kritis! Cek email admin.');
+                    // session()->flash('play_alert_sound', true);
+                    // session()->flash('warning', 'PERHATIAN: Beberapa barang stoknya habis/kritis! Cek email admin.');
                 }
             });
             if (session()->has('warning')) {

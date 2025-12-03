@@ -46,6 +46,7 @@ class ReportExport implements FromArray, WithHeadings, WithStyles, ShouldAutoSiz
             ['II. STATISTIK VOLUME', '', ''],
             ['Total Item Terjual', null, (float) ($d['totalSold'] ?? 0)],
             ['Total Item Dibeli', null, (float) ($d['totalPurchased'] ?? 0)],
+            ['Total Stok Fisik Tersisa', null, (float) ($d['totalStockRemaining'] ?? 0)],
             ['Jumlah Transaksi Berhasil', null, (float) ($d['trxCount'] ?? 0)],
             [''],
 

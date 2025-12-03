@@ -22,7 +22,7 @@ class LowStockAlert extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'PERINGATAN: Stok Barang Menipis / Habis!',
+            subject: '[URGENT] ACTION REQUIRED: Stok Barang Habis (0)',
         );
     }
 

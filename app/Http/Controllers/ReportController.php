@@ -13,20 +13,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
-    // public function __construct()
-    // {
-    //     // Skip checks when running in console (artisan commands, etc).
-    //     if (app()->runningInConsole()) {
-    //         return;
-    //     }
-
-    //     // If the user is authenticated and not admin, deny access.
-    //     // Do not abort when unauthenticated here — assume auth middleware/route will handle authentication.
-    //     if (auth()->check() && auth()->user()->role !== 'admin') {
-    //         abort(403, 'AKSES DITOLAK: Laporan Keuangan hanya untuk Admin.');
-    //     }
-    // }
-
     public function index(Request $request)
     {
         if (auth()->user()->role !== 'admin') {
@@ -97,6 +83,7 @@ class ReportController extends Controller
         // 4. Valuasi Aset (Stock Snapshot) - Tetap pakai logika Backtracking kemarin
         $valuationDate = $endDate;
         $assetValue = 0;
+        $totalStockRemaining = 0;
         $items = Item::all();
         $futureTrxDetails = TransactionDetail::whereHas('transaction', fn($q) => 
             $q->whereDate('transaction_date', '>', $valuationDate)
@@ -112,13 +99,15 @@ class ReportController extends Controller
             }
             $stockAtDate = max(0, $stockAtDate);
             $assetValue += $stockAtDate * $item->buy_price;
+            $totalStockRemaining += $stockAtDate;
         }
 
         return compact(
             'startDate', 'endDate', 
             'omzet', 'hpp', 'profit', 'totalPurchase',
             'totalSold', 'totalPurchased', 'trxCount', 
-            'assetValue', 'valuationDate', 'topItems'
+            'assetValue', 'valuationDate', 'topItems',
+            'totalStockRemaining'
         );
     }
 }

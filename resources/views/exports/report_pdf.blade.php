@@ -76,6 +76,14 @@
                 </td>
                 <td class="amount text-red">(${{ number_format($totalPurchase, 2, '.', ',') }})</td>
             </tr>
+
+            <tr>
+                <td>
+                    Total Stok Fisik Tersisa
+                    <span class="sub-label">Jumlah unit barang yang ada di gudang (akun) per tanggal {{ date('d/m/Y', strtotime($valuationDate)) }}</span>
+                </td>
+                <td class="amount" style="color: #333;">{{ number_format($totalStockRemaining) }} Unit</td>
+            </tr>
         </table>
     </div>
 

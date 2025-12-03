@@ -84,7 +84,14 @@ class ItemController extends Controller
         $direction = $sortParts[1] ?? 'desc';
 
         $allowedSorts = ['name', 'created_at', 'updated_at', 'stock', 'price', 'code'];
-        if (in_array($field, $allowedSorts)) {
+        if ($field === 'code') {
+            // KHUSUS KODE BARANG:
+            // Urutkan berdasarkan PANJANG string dulu, baru nilainya.
+            // Ini membuat "10" (2 digit) muncul sebelum "100" (3 digit).
+            $query->orderByRaw('LENGTH(code) ' . $direction)
+                  ->orderBy('code', $direction);
+        }
+        elseif (in_array($field, $allowedSorts)) {
             $query->orderBy($field, $direction);
         }
 
